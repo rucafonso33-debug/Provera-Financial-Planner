@@ -6,6 +6,7 @@ export interface AppSettings {
   currency: string;
   remittance_currency: string;
   exchange_rate: number;
+  language: 'en' | 'pt';
 }
 
 export interface Income {

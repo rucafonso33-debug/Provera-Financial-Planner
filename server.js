@@ -20,7 +20,8 @@ async function startServer() {
     is_couple_mode: true,
     currency: 'CHF',
     remittance_currency: 'EUR',
-    exchange_rate: 1.05
+    exchange_rate: 1.05,
+    language: 'pt'
   };
   let incomes = [];
   let expenses = [];

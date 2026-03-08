@@ -55,7 +55,7 @@ import {
   eachDayOfInterval,
   isSameDay
 } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { enUS, pt } from 'date-fns/locale';
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, ChatMessage, FinancialGoal, Movement } from './types';
 import { generateFinancialAnalysis, askFinancialQuestion } from './services/aiService';
 import ReactMarkdown from 'react-markdown';
@@ -77,7 +77,8 @@ export default function App() {
     is_couple_mode: true,
     currency: 'CHF',
     remittance_currency: 'EUR',
-    exchange_rate: 1.05
+    exchange_rate: 1.05,
+    language: 'pt'
   });
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
@@ -410,8 +411,38 @@ export default function App() {
     return alerts;
   }, [forecast, events, simulation, settings]);
 
+  const locale = settings.language === 'pt' ? pt : enUS;
+
+  const t = {
+    forecast: settings.language === 'pt' ? 'Previsão' : 'Forecast',
+    events: settings.language === 'pt' ? 'Eventos' : 'Events',
+    goals: settings.language === 'pt' ? 'Objetivos' : 'Goals',
+    settings: settings.language === 'pt' ? 'Definições' : 'Settings',
+    currentBalance: settings.language === 'pt' ? 'Saldo Atual' : 'Current Balance',
+    weeklySpending: settings.language === 'pt' ? 'Gastos Semanais' : 'Weekly Spending',
+    safetyLimit: settings.language === 'pt' ? 'Limite de Segurança' : 'Safety Limit',
+    projection: settings.language === 'pt' ? 'Projeção' : 'Projection',
+    weeks: settings.language === 'pt' ? 'Semanas' : 'Weeks',
+    year: settings.language === 'pt' ? '1 Ano' : '1 Year',
+    simulate: settings.language === 'pt' ? 'Simular' : 'Simulate',
+    income: settings.language === 'pt' ? 'Rendimentos' : 'Income',
+    expense: settings.language === 'pt' ? 'Despesas' : 'Expense',
+    event: settings.language === 'pt' ? 'Evento' : 'Event',
+    risk: settings.language === 'pt' ? 'Risco' : 'Risk',
+    safe: settings.language === 'pt' ? 'Seguro' : 'Safe',
+    timeline: settings.language === 'pt' ? 'Linha do Tempo' : 'Timeline',
+    details: settings.language === 'pt' ? 'Ver detalhes' : 'View details',
+    month: settings.language === 'pt' ? 'Mês' : 'Month',
+    language: settings.language === 'pt' ? 'Língua' : 'Language',
+    currency: settings.language === 'pt' ? 'Moeda' : 'Currency',
+    remittance: settings.language === 'pt' ? 'Remessa' : 'Remittance',
+    exchangeRate: settings.language === 'pt' ? 'Taxa de Câmbio' : 'Exchange Rate',
+    coupleMode: settings.language === 'pt' ? 'Modo Casal' : 'Couple Mode',
+    sharedManagement: settings.language === 'pt' ? 'Gestão Partilhada' : 'Shared Management',
+  };
+
   const formatCurrency = (value: number, currencyCode?: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(settings.language === 'pt' ? 'pt-PT' : 'en-US', {
       style: 'currency',
       currency: currencyCode || settings.currency,
     }).format(value);
@@ -504,7 +535,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold leading-none">Future Flow</h1>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Balance Forecast</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">{t.forecast}</p>
             </div>
           </div>
           <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors relative">
@@ -539,7 +570,7 @@ export default function App() {
             <div className="bg-zinc-900 rounded-3xl p-6 text-white shadow-xl shadow-zinc-200 overflow-hidden relative">
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
-                  <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Current Balance</p>
+                  <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider">{t.currentBalance}</p>
                   <button 
                     onClick={() => {
                       setSettingsModalType('threshold');
@@ -548,7 +579,7 @@ export default function App() {
                     className="bg-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5 hover:bg-white/20 transition-colors"
                   >
                     <Target size={12} className="text-zinc-400" />
-                    <span className="text-[10px] font-bold uppercase text-zinc-300">Goal: {formatCurrency(settings.safety_threshold)}</span>
+                    <span className="text-[10px] font-bold uppercase text-zinc-300">{settings.language === 'pt' ? 'Objetivo' : 'Goal'}: {formatCurrency(settings.safety_threshold)}</span>
                   </button>
                 </div>
                 <h2 
@@ -569,21 +600,21 @@ export default function App() {
                     }}
                     className="bg-white/5 rounded-2xl p-3 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
                   >
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Weekly Spending</p>
+                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">{t.weeklySpending}</p>
                     <p className="text-sm font-bold">{formatCurrency(settings.weekly_spending_estimate)}</p>
                   </div>
                   <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Status {forecastWeeks} Wks.</p>
+                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Status {forecastWeeks} {t.weeks.substring(0, 3)}.</p>
                     <div className="flex items-center gap-1.5">
                       {forecast.some(w => w.is_below_threshold) ? (
                         <>
                           <AlertTriangle size={14} className="text-rose-500" />
-                          <span className="text-sm font-bold text-rose-500">Risk</span>
+                          <span className="text-sm font-bold text-rose-500">{t.risk}</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 size={14} className="text-emerald-500" />
-                          <span className="text-sm font-bold text-emerald-500">Safe</span>
+                          <span className="text-sm font-bold text-emerald-500">{t.safe}</span>
                         </>
                       )}
                     </div>
@@ -624,19 +655,19 @@ export default function App() {
             <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                  <ArrowRight size={14} /> Currency Converter
+                  <ArrowRight size={14} /> {settings.language === 'pt' ? 'Conversor de Moeda' : 'Currency Converter'}
                 </h3>
                 <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full uppercase">
-                  Remittance Estimate
+                  {settings.language === 'pt' ? 'Estimativa de Remessa' : 'Remittance Estimate'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">In {settings.remittance_currency}</p>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings.language === 'pt' ? 'Em' : 'In'} {settings.remittance_currency}</p>
                   <p className="text-2xl font-black text-zinc-900">{formatRemittance(settings.current_balance)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Rate</p>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings.language === 'pt' ? 'Taxa' : 'Rate'}</p>
                   <p className="text-sm font-bold text-zinc-600">1 {settings.currency} = {settings.exchange_rate} {settings.remittance_currency}</p>
                 </div>
               </div>
@@ -686,7 +717,7 @@ export default function App() {
                   <PieChart size={14} /> Monthly Summary
                 </h3>
                 <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full uppercase">
-                  {format(new Date(), 'MMMM', { locale: enUS })}
+                  {format(new Date(), 'MMMM', { locale })}
                 </span>
               </div>
               
@@ -724,7 +755,7 @@ export default function App() {
             {/* Chart */}
             <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm h-[400px]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Projection {forecastWeeks} Weeks</h3>
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.projection} {forecastWeeks} {t.weeks}</h3>
                 <div className="flex flex-wrap items-center gap-2">
                   <select 
                     onChange={(e) => {
@@ -755,13 +786,13 @@ export default function App() {
                     }}
                     className="bg-zinc-100 border-none rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-zinc-900 transition-all shadow-sm"
                   >
-                    <option value="">Month...</option>
+                    <option value="">{t.month}...</option>
                     {Array.from({ length: 12 }).map((_, i) => {
                       const d = new Date();
                       d.setMonth(d.getMonth() + i);
                       return (
                         <option key={i} value={d.getMonth()}>
-                          {format(d, 'MMM yy', { locale: enUS })}
+                          {format(d, 'MMM yy', { locale })}
                         </option>
                       );
                     })}
@@ -778,7 +809,7 @@ export default function App() {
                             : "text-zinc-400 hover:text-zinc-600"
                         )}
                       >
-                        {weeks === 52 ? '1 Year' : `${weeks}W`}
+                        {weeks === 52 ? t.year : `${weeks}W`}
                       </button>
                     ))}
                   </div>
@@ -792,13 +823,13 @@ export default function App() {
                     )}
                   >
                     <TrendingUp size={14} />
-                    {simulation.isActive ? 'Sim' : 'Simulate'}
+                    {simulation.isActive ? 'Sim' : t.simulate}
                   </button>
                 </div>
               </div>
               <div className="h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={forecast} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <AreaChart key={forecastWeeks} data={forecast} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
@@ -820,9 +851,10 @@ export default function App() {
                     <YAxis hide domain={['auto', 'auto']} padding={{ top: 20, bottom: 20 }} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)' }}
+                      labelFormatter={(val) => format(parseISO(val), 'dd MMMM yyyy', { locale })}
                       formatter={(val: number, name: string) => [
                         formatCurrency(val), 
-                        name === 'projected_balance' ? 'Real' : 'Simulated'
+                        name === 'projected_balance' ? 'Real' : (settings.language === 'pt' ? 'Simulado' : 'Simulated')
                       ]}
                     />
                     <ReferenceLine 
@@ -866,7 +898,7 @@ export default function App() {
             {/* Forecast List */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Timeline</h3>
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.timeline}</h3>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-zinc-900 rounded-full"></div>
@@ -875,7 +907,7 @@ export default function App() {
                   {simulation.isActive && (
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                      <span className="text-[8px] font-bold text-zinc-400 uppercase">Simulated</span>
+                      <span className="text-[8px] font-bold text-zinc-400 uppercase">{settings.language === 'pt' ? 'Simulado' : 'Simulated'}</span>
                     </div>
                   )}
                 </div>
@@ -941,12 +973,12 @@ export default function App() {
                           onClick={() => setSelectedWeek(week)}
                           className="mt-1 text-[10px] font-bold text-zinc-400 uppercase hover:text-zinc-600 flex items-center gap-1 transition-colors"
                         >
-                          <Info size={12} /> View details
+                          <Info size={12} /> {t.details}
                         </button>
                       </div>
                       {(simulation.isActive ? week.is_sim_below_threshold : week.is_below_threshold) && (
                         <p className="text-[10px] text-rose-500 font-bold flex items-center justify-end gap-1 mt-1.5">
-                          <AlertTriangle size={12} /> Balance Risk
+                          <AlertTriangle size={12} /> {settings.language === 'pt' ? 'Risco de Saldo' : 'Balance Risk'}
                         </p>
                       )}
                     </div>
@@ -963,51 +995,78 @@ export default function App() {
             <section className="space-y-4">
               <div className="flex items-center gap-2 px-2">
                 <SettingsIcon size={16} className="text-zinc-400" />
-                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">General Configuration</h3>
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.settings}</h3>
               </div>
               <div className="bg-white rounded-3xl p-6 border border-zinc-200 space-y-6 shadow-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Currency</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.language}</label>
+                    <div className="flex gap-1 bg-zinc-100 p-1 rounded-2xl">
+                      {[
+                        { id: 'pt', label: 'PT', flag: '🇵🇹' },
+                        { id: 'en', label: 'EN', flag: '🇺🇸' }
+                      ].map(lang => (
+                        <button
+                          key={lang.id}
+                          onClick={() => handleSaveSettings({...settings, language: lang.id as any})}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
+                            settings.language === lang.id 
+                              ? "bg-white text-zinc-900 shadow-sm" 
+                              : "text-zinc-400 hover:text-zinc-600"
+                          )}
+                        >
+                          <span>{lang.flag}</span>
+                          <span>{lang.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.currency}</label>
                     <select 
                       value={settings.currency}
                       onChange={(e) => handleSaveSettings({...settings, currency: e.target.value})}
                       className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
                     >
-                      <option value="CHF">CHF</option>
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                      <option value="GBP">GBP</option>
-                      <option value="BRL">BRL</option>
+                      <option value="CHF">CHF (Fr.)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="BRL">BRL (R$)</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Remittance Currency</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.remittance}</label>
                     <select 
                       value={settings.remittance_currency}
                       onChange={(e) => handleSaveSettings({...settings, remittance_currency: e.target.value})}
                       className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
                     >
-                      <option value="EUR">EUR</option>
-                      <option value="BRL">BRL</option>
-                      <option value="USD">USD</option>
-                      <option value="GBP">GBP</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="BRL">BRL (R$)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="GBP">GBP (£)</option>
                     </select>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.exchangeRate}</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      value={settings.exchange_rate}
+                      onChange={(e) => handleSaveSettings({...settings, exchange_rate: Number(e.target.value)})}
+                      className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Exchange Rate (1 {settings.currency} = ? {settings.remittance_currency})</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={settings.exchange_rate}
-                    onChange={(e) => handleSaveSettings({...settings, exchange_rate: Number(e.target.value)})}
-                    className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
-                  />
-                </div>
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Current Bank Balance</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.currentBalance}</label>
                     <Wallet size={14} className="text-zinc-300" />
                   </div>
                   <div className="relative">
@@ -1022,7 +1081,7 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Weekly Spending</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.weeklySpending}</label>
                     <input 
                       type="number" 
                       value={settings.weekly_spending_estimate}
@@ -1031,7 +1090,7 @@ export default function App() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Safety Limit</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.safetyLimit}</label>
                     <input 
                       type="number" 
                       value={settings.safety_threshold}
@@ -1046,8 +1105,8 @@ export default function App() {
                       <Users size={18} className="text-zinc-400" />
                     </div>
                     <div>
-                      <span className="text-sm font-bold block">Couple Mode</span>
-                      <span className="text-[10px] text-zinc-400 uppercase font-medium">Shared Management</span>
+                      <span className="text-sm font-bold block">{t.coupleMode}</span>
+                      <span className="text-[10px] text-zinc-400 uppercase font-medium">{t.sharedManagement}</span>
                     </div>
                   </div>
                   <button 
@@ -1379,7 +1438,7 @@ export default function App() {
             )}
           >
             <LayoutDashboard size={24} />
-            <span className="text-[10px] font-bold uppercase">Forecast</span>
+            <span className="text-[10px] font-bold uppercase">{t.forecast}</span>
           </button>
           <button 
             onClick={() => setActiveTab('events')}
@@ -1389,7 +1448,7 @@ export default function App() {
             )}
           >
             <Calendar size={24} />
-            <span className="text-[10px] font-bold uppercase">Events</span>
+            <span className="text-[10px] font-bold uppercase">{t.events}</span>
           </button>
           <button 
             onClick={() => setActiveTab('goals')}
@@ -1399,7 +1458,7 @@ export default function App() {
             )}
           >
             <Target size={24} />
-            <span className="text-[10px] font-bold uppercase">Goals</span>
+            <span className="text-[10px] font-bold uppercase">{t.goals}</span>
           </button>
           <button 
             onClick={() => setActiveTab('setup')}
@@ -1409,7 +1468,7 @@ export default function App() {
             )}
           >
             <SettingsIcon size={24} />
-            <span className="text-[10px] font-bold uppercase">Settings</span>
+            <span className="text-[10px] font-bold uppercase">{t.settings}</span>
           </button>
         </div>
       </nav>
