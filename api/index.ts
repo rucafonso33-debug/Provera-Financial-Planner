@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("finances.db");
+const db = new Database(path.join(__dirname, "..", "finances.db"));
 
 // Initialize database for Forecast App
 db.exec(`
@@ -53,7 +53,7 @@ db.exec(`
   VALUES (1, 0, 0, 1000, 1);
 `);
 
-async function startServer() {
+async function createServer() {
   const app = express();
   const PORT = 3000;
 
@@ -178,15 +178,25 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    app.use(express.static(path.join(__dirname, "..", "dist")));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  return app;
 }
 
-startServer();
+const appPromise = createServer();
+
+if (process.env.NODE_ENV !== "production") {
+  appPromise.then(() => {});
+}
+
+export default async (req: any, res: any) => {
+  const app = await appPromise;
+  return app(req, res);
+};

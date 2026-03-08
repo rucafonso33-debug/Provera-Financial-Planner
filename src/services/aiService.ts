@@ -1,7 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, FinancialGoal } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY não configurada.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const generateFinancialAnalysis = async (data: {
   settings: AppSettings;
@@ -12,6 +18,7 @@ export const generateFinancialAnalysis = async (data: {
   simulation: SimulationState;
   goals: FinancialGoal[];
 }): Promise<AIAnalysis> => {
+  const ai = getAI();
   const prompt = `
     Aja como um Assistente Financeiro Pessoal especializado em gestão de fluxo de caixa.
     Analise os seguintes dados financeiros do utilizador e forneça insights inteligentes e recomendações práticas em Português.
@@ -110,6 +117,7 @@ export const askFinancialQuestion = async (
     ${JSON.stringify(data, null, 2)}
   `;
 
+  const ai = getAI();
   const chat = ai.chats.create({
     model: "gemini-3-flash-preview",
     config: {
