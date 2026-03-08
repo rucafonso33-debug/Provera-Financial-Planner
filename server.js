@@ -21,7 +21,9 @@ async function startServer() {
     currency: 'CHF',
     remittance_currency: 'EUR',
     exchange_rate: 1.05,
-    language: 'pt'
+    language: 'en',
+    onboarding_completed: false,
+    last_exchange_update: null
   };
   let incomes = [];
   let expenses = [];

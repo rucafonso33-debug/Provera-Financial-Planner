@@ -7,6 +7,8 @@ export interface AppSettings {
   remittance_currency: string;
   exchange_rate: number;
   language: 'en' | 'pt';
+  onboarding_completed: boolean;
+  last_exchange_update?: string;
 }
 
 export interface Income {

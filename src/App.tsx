@@ -55,7 +55,8 @@ import {
   eachDayOfInterval,
   isSameDay
 } from 'date-fns';
-import { enUS, pt } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
+import { fetchExchangeRates } from './services/exchangeService';
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, ChatMessage, FinancialGoal, Movement } from './types';
 import { generateFinancialAnalysis, askFinancialQuestion } from './services/aiService';
 import ReactMarkdown from 'react-markdown';
@@ -78,7 +79,8 @@ export default function App() {
     currency: 'CHF',
     remittance_currency: 'EUR',
     exchange_rate: 1.05,
-    language: 'pt'
+    language: 'en',
+    onboarding_completed: false
   });
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
@@ -107,10 +109,58 @@ export default function App() {
   const [selectedWeek, setSelectedWeek] = useState<ForecastWeek | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsModalType, setSettingsModalType] = useState<'balance' | 'spending' | 'threshold'>('balance');
+  const [highlightedWeek, setHighlightedWeek] = useState<number | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [converterAmount, setConverterAmount] = useState<number>(0);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetchData();
+    const savedData = localStorage.getItem('futureflow_data');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setSettings(parsed.settings);
+      setIncomes(parsed.incomes);
+      setFixedExpenses(parsed.fixedExpenses);
+      setEvents(parsed.events);
+      setGoals(parsed.goals);
+      setLoading(false);
+    } else {
+      fetchData();
+    }
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('futureflow_data', JSON.stringify({
+        settings,
+        incomes,
+        fixedExpenses,
+        events,
+        goals
+      }));
+    }
+  }, [settings, incomes, fixedExpenses, events, goals, loading]);
+
+  useEffect(() => {
+    const updateRates = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      if (settings.last_exchange_update !== today) {
+        const rates = await fetchExchangeRates(settings.currency);
+        if (rates) {
+          setExchangeRates(rates);
+          const newRate = rates[settings.remittance_currency] || settings.exchange_rate;
+          handleSaveSettings({
+            ...settings,
+            exchange_rate: newRate,
+            last_exchange_update: today
+          });
+        }
+      }
+    };
+    if (settings.onboarding_completed) {
+      updateRates();
+    }
+  }, [settings.currency, settings.onboarding_completed]);
 
   const fetchData = async () => {
     try {
@@ -411,38 +461,45 @@ export default function App() {
     return alerts;
   }, [forecast, events, simulation, settings]);
 
-  const locale = settings.language === 'pt' ? pt : enUS;
+  const financialHealth = useMemo(() => {
+    const firstWeekBelow = forecast.find(w => w.is_below_threshold);
+    if (!firstWeekBelow) return { status: 'Excellent', color: 'text-emerald-500', explanation: 'Your balance stays above the safety limit for the entire forecast period.' };
+    
+    if (firstWeekBelow.week_number > 8) return { status: 'Good', color: 'text-blue-500', explanation: `Your balance falls below the safety limit in week ${firstWeekBelow.week_number}.` };
+    if (firstWeekBelow.week_number > 4) return { status: 'Moderate', color: 'text-amber-500', explanation: `Your balance falls below the safety limit in week ${firstWeekBelow.week_number}.` };
+    return { status: 'Risk', color: 'text-rose-500', explanation: `Your balance falls below the safety limit in week ${firstWeekBelow.week_number}.` };
+  }, [forecast]);
 
   const t = {
-    forecast: settings.language === 'pt' ? 'Previsão' : 'Forecast',
-    events: settings.language === 'pt' ? 'Eventos' : 'Events',
-    goals: settings.language === 'pt' ? 'Objetivos' : 'Goals',
-    settings: settings.language === 'pt' ? 'Definições' : 'Settings',
-    currentBalance: settings.language === 'pt' ? 'Saldo Atual' : 'Current Balance',
-    weeklySpending: settings.language === 'pt' ? 'Gastos Semanais' : 'Weekly Spending',
-    safetyLimit: settings.language === 'pt' ? 'Limite de Segurança' : 'Safety Limit',
-    projection: settings.language === 'pt' ? 'Projeção' : 'Projection',
-    weeks: settings.language === 'pt' ? 'Semanas' : 'Weeks',
-    year: settings.language === 'pt' ? '1 Ano' : '1 Year',
-    simulate: settings.language === 'pt' ? 'Simular' : 'Simulate',
-    income: settings.language === 'pt' ? 'Rendimentos' : 'Income',
-    expense: settings.language === 'pt' ? 'Despesas' : 'Expense',
-    event: settings.language === 'pt' ? 'Evento' : 'Event',
-    risk: settings.language === 'pt' ? 'Risco' : 'Risk',
-    safe: settings.language === 'pt' ? 'Seguro' : 'Safe',
-    timeline: settings.language === 'pt' ? 'Linha do Tempo' : 'Timeline',
-    details: settings.language === 'pt' ? 'Ver detalhes' : 'View details',
-    month: settings.language === 'pt' ? 'Mês' : 'Month',
-    language: settings.language === 'pt' ? 'Língua' : 'Language',
-    currency: settings.language === 'pt' ? 'Moeda' : 'Currency',
-    remittance: settings.language === 'pt' ? 'Remessa' : 'Remittance',
-    exchangeRate: settings.language === 'pt' ? 'Taxa de Câmbio' : 'Exchange Rate',
-    coupleMode: settings.language === 'pt' ? 'Modo Casal' : 'Couple Mode',
-    sharedManagement: settings.language === 'pt' ? 'Gestão Partilhada' : 'Shared Management',
+    forecast: 'Forecast',
+    events: 'Events',
+    goals: 'Goals',
+    settings: 'Settings',
+    currentBalance: 'Current Balance',
+    weeklySpending: 'Weekly Spending',
+    safetyLimit: 'Safety Limit',
+    projection: 'Projection',
+    weeks: 'Weeks',
+    year: '1 Year',
+    simulate: 'Simulate',
+    income: 'Income',
+    expense: 'Expense',
+    event: 'Event',
+    risk: 'Risk',
+    safe: 'Safe',
+    timeline: 'Timeline',
+    details: 'View details',
+    month: 'Month',
+    language: 'Language',
+    currency: 'Currency',
+    remittance: 'Remittance',
+    exchangeRate: 'Exchange Rate',
+    coupleMode: 'Couple Mode',
+    sharedManagement: 'Shared Management',
   };
 
   const formatCurrency = (value: number, currencyCode?: string) => {
-    return new Intl.NumberFormat(settings.language === 'pt' ? 'pt-PT' : 'en-US', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currencyCode || settings.currency,
     }).format(value);
@@ -522,6 +579,190 @@ export default function App() {
     }
   };
 
+  const handleResetData = () => {
+    if (window.confirm('Are you sure you want to reset all financial data? This cannot be undone.')) {
+      localStorage.removeItem('futureflow_data');
+      window.location.reload();
+    }
+  };
+
+  if (!settings.onboarding_completed && !loading) {
+    return (
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center p-6 text-white font-sans">
+        <div className="max-w-md w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-zinc-900 mx-auto mb-6 shadow-2xl">
+              <Wallet size={32} />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">Welcome to Future Flow</h1>
+            <p className="text-zinc-400 text-sm">Let's set up your financial forecast in 4 simple steps.</p>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-8">
+            {onboardingStep === 0 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Step 1: Current Balance</label>
+                  <p className="text-sm text-zinc-300">How much money do you have in your bank account right now?</p>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-zinc-500">{settings.currency}</span>
+                  <input 
+                    type="number" 
+                    autoFocus
+                    placeholder="0.00"
+                    className="w-full bg-white/10 border-none rounded-2xl pl-14 pr-4 py-4 text-2xl font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                    onKeyDown={(e) => e.key === 'Enter' && setOnboardingStep(1)}
+                    onChange={(e) => setSettings(s => ({ ...s, current_balance: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {onboardingStep === 1 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Step 2: Monthly Income</label>
+                  <p className="text-sm text-zinc-300">Add your main monthly income (salary, etc).</p>
+                </div>
+                <div className="space-y-4">
+                  <input 
+                    type="text" 
+                    placeholder="Income Name (e.g. Salary)"
+                    className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                    id="onboarding-income-name"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input 
+                      type="number" 
+                      placeholder="Amount"
+                      className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      id="onboarding-income-amount"
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="Day (1-31)"
+                      className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      id="onboarding-income-day"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const name = (document.getElementById('onboarding-income-name') as HTMLInputElement).value;
+                      const amount = Number((document.getElementById('onboarding-income-amount') as HTMLInputElement).value);
+                      const day = Number((document.getElementById('onboarding-income-day') as HTMLInputElement).value);
+                      if (name && amount) {
+                        setIncomes([...incomes, { id: Date.now(), name, amount, day_of_month: day, owner: 'shared' }]);
+                        setOnboardingStep(2);
+                      }
+                    }}
+                    className="w-full bg-white text-zinc-900 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                  >
+                    Next Step
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {onboardingStep === 2 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Step 3: Fixed Expenses</label>
+                  <p className="text-sm text-zinc-300">Add a major fixed expense (e.g. Rent).</p>
+                </div>
+                <div className="space-y-4">
+                  <input 
+                    type="text" 
+                    placeholder="Expense Name (e.g. Rent)"
+                    className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                    id="onboarding-expense-name"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input 
+                      type="number" 
+                      placeholder="Amount"
+                      className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      id="onboarding-expense-amount"
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="Day (1-31)"
+                      className="w-full bg-white/10 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      id="onboarding-expense-day"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const name = (document.getElementById('onboarding-expense-name') as HTMLInputElement).value;
+                      const amount = Number((document.getElementById('onboarding-expense-amount') as HTMLInputElement).value);
+                      const day = Number((document.getElementById('onboarding-expense-day') as HTMLInputElement).value);
+                      if (name && amount) {
+                        setFixedExpenses([...fixedExpenses, { id: Date.now(), name, amount, day_of_month: day }]);
+                        setOnboardingStep(3);
+                      }
+                    }}
+                    className="w-full bg-white text-zinc-900 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                  >
+                    Next Step
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {onboardingStep === 3 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Step 4: Weekly Spending</label>
+                  <p className="text-sm text-zinc-300">Estimate your variable weekly spending (food, leisure, etc).</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-zinc-500">{settings.currency}</span>
+                    <input 
+                      type="number" 
+                      placeholder="0.00"
+                      className="w-full bg-white/10 border-none rounded-2xl pl-14 pr-4 py-4 text-2xl font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      onChange={(e) => setSettings(s => ({ ...s, weekly_spending_estimate: Number(e.target.value) }))}
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      handleSaveSettings({ ...settings, onboarding_completed: true });
+                    }}
+                    className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
+                  >
+                    Complete Setup
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {onboardingStep === 0 && (
+              <button 
+                onClick={() => setOnboardingStep(1)}
+                className="w-full bg-white text-zinc-900 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+              >
+                Continue
+              </button>
+            )}
+          </div>
+          
+          <div className="flex justify-center gap-2">
+            {[0, 1, 2, 3].map(step => (
+              <div 
+                key={step}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all",
+                  onboardingStep === step ? "bg-white w-6" : "bg-white/20"
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
   return (
@@ -565,6 +806,21 @@ export default function App() {
                 </button>
               </div>
             )}
+
+            {/* Financial Health Indicator */}
+            <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={14} className="text-zinc-400" /> Financial Health
+                </h3>
+                <span className={cn("text-[10px] font-black uppercase px-2 py-0.5 rounded-full", financialHealth.color.replace('text-', 'bg-').replace('500', '100'), financialHealth.color)}>
+                  {financialHealth.status}
+                </span>
+              </div>
+              <p className="text-sm font-medium text-zinc-600 leading-relaxed">
+                {financialHealth.explanation}
+              </p>
+            </div>
 
             {/* Current Balance Card */}
             <div className="bg-zinc-900 rounded-3xl p-6 text-white shadow-xl shadow-zinc-200 overflow-hidden relative">
@@ -717,7 +973,7 @@ export default function App() {
                   <PieChart size={14} /> Monthly Summary
                 </h3>
                 <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full uppercase">
-                  {format(new Date(), 'MMMM', { locale })}
+                  {format(new Date(), 'MMMM')}
                 </span>
               </div>
               
@@ -749,6 +1005,47 @@ export default function App() {
                     {formatCurrency(monthlySummary.projectedRemaining)}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Currency Converter Tool */}
+            <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                  <RotateCcw size={14} /> Currency Converter
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-zinc-400">{settings.currency}</span>
+                  <input 
+                    type="number" 
+                    placeholder="Enter amount"
+                    value={converterAmount || ''}
+                    onChange={(e) => setConverterAmount(Number(e.target.value))}
+                    className="w-full bg-zinc-50 border-none rounded-2xl pl-14 pr-4 py-3 text-lg font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {['EUR', 'USD', 'GBP', 'BRL'].filter(c => c !== settings.currency).map(curr => (
+                    <div key={curr} className="bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase">{curr}</p>
+                      <p className="text-sm font-black">
+                        {exchangeRates[curr] ? (converterAmount * exchangeRates[curr]).toLocaleString('en-US', { style: 'currency', currency: curr }) : '---'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {converterAmount > 0 && (
+                  <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                    <p className="text-xs font-medium text-emerald-800 leading-relaxed">
+                      "You could send approximately <strong>{formatCurrency(Math.max(0, settings.current_balance - settings.safety_threshold))}</strong> in your home currency while keeping your safety balance."
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -792,7 +1089,7 @@ export default function App() {
                       d.setMonth(d.getMonth() + i);
                       return (
                         <option key={i} value={d.getMonth()}>
-                          {format(d, 'MMM yy', { locale })}
+                          {format(d, 'MMM yy')}
                         </option>
                       );
                     })}
@@ -830,6 +1127,9 @@ export default function App() {
               <div className="h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart key={forecastWeeks} data={forecast} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                    {highlightedWeek !== null && (
+                      <ReferenceLine x={forecast[highlightedWeek - 1]?.start_date} stroke="#18181b" strokeDasharray="3 3" />
+                    )}
                     <defs>
                       <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
@@ -851,10 +1151,10 @@ export default function App() {
                     <YAxis hide domain={['auto', 'auto']} padding={{ top: 20, bottom: 20 }} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)' }}
-                      labelFormatter={(val) => format(parseISO(val), 'dd MMMM yyyy', { locale })}
+                      labelFormatter={(val) => format(parseISO(val), 'dd MMMM yyyy')}
                       formatter={(val: number, name: string) => [
                         formatCurrency(val), 
-                        name === 'projected_balance' ? 'Real' : (settings.language === 'pt' ? 'Simulado' : 'Simulated')
+                        name === 'projected_balance' ? 'Real' : 'Simulated'
                       ]}
                     />
                     <ReferenceLine 
@@ -915,13 +1215,16 @@ export default function App() {
               <div className="space-y-3">
                 {forecast.map((week) => (
                   <div 
-                    key={week.week_number}
+                    key={week.week_number} 
                     id={`week-${week.week_number}`}
+                    onClick={() => setHighlightedWeek(week.week_number)}
                     className={cn(
-                      "bg-white rounded-2xl p-5 border transition-all flex items-center justify-between group hover:border-zinc-300",
-                      (simulation.isActive ? week.is_sim_below_threshold : week.is_below_threshold) 
-                        ? "border-rose-200 bg-rose-50/30" 
-                        : "border-zinc-200"
+                      "bg-white rounded-2xl p-5 border transition-all flex items-center justify-between group cursor-pointer",
+                      highlightedWeek === week.week_number 
+                        ? "border-zinc-900 ring-1 ring-zinc-900 shadow-md" 
+                        : (simulation.isActive ? week.is_sim_below_threshold : week.is_below_threshold) 
+                          ? "border-rose-200 bg-rose-50/30 hover:border-rose-300" 
+                          : "border-zinc-200 hover:border-zinc-300 shadow-sm"
                     )}
                   >
                     <div className="flex items-center gap-4">
@@ -1000,29 +1303,6 @@ export default function App() {
               <div className="bg-white rounded-3xl p-6 border border-zinc-200 space-y-6 shadow-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.language}</label>
-                    <div className="flex gap-1 bg-zinc-100 p-1 rounded-2xl">
-                      {[
-                        { id: 'pt', label: 'PT', flag: '🇵🇹' },
-                        { id: 'en', label: 'EN', flag: '🇺🇸' }
-                      ].map(lang => (
-                        <button
-                          key={lang.id}
-                          onClick={() => handleSaveSettings({...settings, language: lang.id as any})}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
-                            settings.language === lang.id 
-                              ? "bg-white text-zinc-900 shadow-sm" 
-                              : "text-zinc-400 hover:text-zinc-600"
-                          )}
-                        >
-                          <span>{lang.flag}</span>
-                          <span>{lang.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.currency}</label>
                     <select 
                       value={settings.currency}
@@ -1036,9 +1316,6 @@ export default function App() {
                       <option value="BRL">BRL (R$)</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.remittance}</label>
                     <select 
@@ -1051,16 +1328,6 @@ export default function App() {
                       <option value="USD">USD ($)</option>
                       <option value="GBP">GBP (£)</option>
                     </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.exchangeRate}</label>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      value={settings.exchange_rate}
-                      onChange={(e) => handleSaveSettings({...settings, exchange_rate: Number(e.target.value)})}
-                      className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
-                    />
                   </div>
                 </div>
 
@@ -1222,6 +1489,23 @@ export default function App() {
                 )}
               </div>
             </section>
+
+            {/* Beta Info */}
+            <div className="flex flex-col items-center gap-4 pt-8 pb-12">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Version: Beta 1.0.0</span>
+              <button 
+                onClick={() => window.open('mailto:feedback@futureflow.app')}
+                className="flex items-center gap-2 px-6 py-3 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-bold hover:bg-zinc-200 transition-all"
+              >
+                <MessageSquare size={16} /> Send Feedback
+              </button>
+              <button 
+                onClick={handleResetData}
+                className="text-[10px] font-bold text-rose-500 uppercase hover:text-rose-600 transition-colors"
+              >
+                Reset Financial Data
+              </button>
+            </div>
           </div>
         )}
 
