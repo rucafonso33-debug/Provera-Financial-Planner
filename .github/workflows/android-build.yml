@@ -42,7 +42,3 @@ jobs:
         with:
           name: android-aab
           path: android/app/build/outputs/bundle/release/*.aab
-git add .
-git commit -m "android workflow"
-git push
-
