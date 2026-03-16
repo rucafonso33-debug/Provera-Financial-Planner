@@ -79,17 +79,16 @@ import {
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Tutorial } from './components/Tutorial';
 import { AICoach } from './components/AICoach';
+import { RecoveryPlan } from './components/RecoveryPlan';
+import { FinancialHealth } from './components/FinancialHealth';
+import { ForecastGraph } from './components/ForecastGraph';
+import { calculateForecast } from './services/forecastService';
+import { cn } from './lib/utils';
 import { enUS } from 'date-fns/locale';
 import { fetchExchangeRates } from './services/exchangeService';
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, ChatMessage, FinancialGoal, Movement } from './types';
 import { generateFinancialAnalysis, askFinancialQuestion } from './services/aiService';
 import ReactMarkdown from 'react-markdown';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 type Tab = 'forecast' | 'setup' | 'events' | 'goals';
 
@@ -404,151 +403,16 @@ function App() {
   }, [settings.current_balance, settings.balance_last_updated, incomes, fixedExpenses, events]);
 
   const forecast = useMemo(() => {
-    const result: ForecastWeek[] = [];
-    let runningBalance = effectiveBalance;
-    let runningSimBalance = effectiveBalance;
-    const today = new Date();
-    
-    // Starting point
-    result.push({
-      week_number: 0,
-      start_date: today.toISOString(),
-      end_date: today.toISOString(),
-      start_balance: effectiveBalance,
-      projected_balance: effectiveBalance,
-      simulated_balance: effectiveBalance,
-      is_below_threshold: effectiveBalance < settings.safety_threshold,
-      is_sim_below_threshold: effectiveBalance < settings.safety_threshold,
-      events: [],
-      incomes: [],
-      movements: []
-    });
-
-    for (let i = 0; i < forecastWeeks; i++) {
-      const weekStart = addWeeks(startOfWeek(today), i);
-      const weekEnd = endOfWeek(weekStart);
-      const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-      
-      const weekIncomes: string[] = [];
-      const weekEvents: string[] = [];
-      const movements: Movement[] = [];
-      const startBalance = runningBalance;
-      
-      let weekIncomeTotal = 0;
-      let weekExpenseTotal = 0;
-      
-      let weekSimIncomeTotal = 0;
-      let weekSimExpenseTotal = 0;
-
-      // Weekly spending estimate
-      weekExpenseTotal += settings.weekly_spending_estimate;
-      weekSimExpenseTotal += settings.weekly_spending_estimate + simulation.weeklySpendingDelta;
-      
-      movements.push({
-        name: 'Estimated weekly spending',
-        amount: simulation.isActive 
-          ? settings.weekly_spending_estimate + simulation.weeklySpendingDelta
-          : settings.weekly_spending_estimate,
-        type: 'spending'
-      });
-
-      // Check incomes and fixed expenses for each day of the week
-      weekDays.forEach(day => {
-        if (day < startOfDay(today)) return; // Skip days before today
-        
-        const dayNum = getDate(day);
-        
-        incomes.forEach(inc => {
-          if (inc.day_of_month === dayNum) {
-            weekIncomeTotal += inc.amount;
-            weekSimIncomeTotal += inc.amount;
-            weekIncomes.push(`${inc.name} (${inc.amount})`);
-            movements.push({
-              name: inc.name,
-              amount: inc.amount,
-              type: 'income'
-            });
-          }
-        });
-
-        fixedExpenses.forEach(exp => {
-          if (exp.day_of_month === dayNum) {
-            weekExpenseTotal += exp.amount;
-            weekSimExpenseTotal += exp.amount;
-            weekEvents.push(`${exp.name} (-${exp.amount})`);
-            movements.push({
-              name: exp.name,
-              amount: exp.amount,
-              type: 'expense'
-            });
-          }
-        });
-      });
-
-      // Check one-off events
-      events.forEach(evt => {
-        const evtDate = parseISO(evt.date);
-        if (isWithinInterval(evtDate, { start: weekStart, end: weekEnd })) {
-          weekExpenseTotal += evt.amount;
-          weekSimExpenseTotal += evt.amount;
-          weekEvents.push(`${evt.description} (-${evt.amount})`);
-          movements.push({
-            name: evt.description,
-            amount: evt.amount,
-            type: 'event'
-          });
-        }
-      });
-
-      // Simulation: One-off expenses
-      simulation.oneOffExpenses.forEach(evt => {
-        const evtDate = parseISO(evt.date);
-        if (isWithinInterval(evtDate, { start: weekStart, end: weekEnd })) {
-          weekSimExpenseTotal += evt.amount;
-          if (simulation.isActive) {
-            movements.push({
-              name: `(Sim) ${evt.description}`,
-              amount: evt.amount,
-              type: 'event'
-            });
-          }
-        }
-      });
-
-      // Simulation: Income changes
-      simulation.incomeChanges.forEach(inc => {
-        const incDate = parseISO(inc.date);
-        if (isWithinInterval(incDate, { start: weekStart, end: weekEnd })) {
-          weekSimIncomeTotal += inc.amount;
-          if (simulation.isActive) {
-            movements.push({
-              name: `(Sim) ${inc.description}`,
-              amount: inc.amount,
-              type: 'income'
-            });
-          }
-        }
-      });
-
-      runningBalance = runningBalance + weekIncomeTotal - weekExpenseTotal;
-      runningSimBalance = runningSimBalance + weekSimIncomeTotal - weekSimExpenseTotal;
-
-      result.push({
-        week_number: i + 1,
-        start_date: weekStart.toISOString(),
-        end_date: weekEnd.toISOString(),
-        start_balance: startBalance,
-        projected_balance: runningBalance,
-        simulated_balance: runningSimBalance,
-        is_below_threshold: runningBalance < settings.safety_threshold,
-        is_sim_below_threshold: runningSimBalance < settings.safety_threshold,
-        events: weekEvents,
-        incomes: weekIncomes,
-        movements: movements
-      });
-    }
-    return result;
-  }, [settings, incomes, fixedExpenses, events, simulation, forecastWeeks]);
+    return calculateForecast(
+      settings,
+      incomes,
+      fixedExpenses,
+      events,
+      simulation,
+      forecastWeeks,
+      effectiveBalance
+    );
+  }, [settings, incomes, fixedExpenses, events, simulation, forecastWeeks, effectiveBalance]);
 
   const monthlySummary = useMemo(() => {
     const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
@@ -1328,90 +1192,21 @@ function App() {
               </div>
             )}
 
-            {/* Current Balance Card */}
-            <div id="current-balance-card" className="bg-zinc-900 rounded-3xl p-6 text-white shadow-xl shadow-zinc-200 overflow-hidden relative">
-              <div className="relative z-10">
-                <div className="flex items-center justify-between">
-                  <p className="text-zinc-400 text-xs font-medium uppercase tracking-wider">{t.currentBalance}</p>
-                  <button 
-                    onClick={() => {
-                      setSettingsModalType('threshold');
-                      setIsSettingsModalOpen(true);
-                    }}
-                    className="bg-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5 hover:bg-white/20 transition-colors"
-                  >
-                    <Target size={12} className="text-zinc-400" />
-                    <span className="text-[10px] font-bold uppercase text-zinc-300">{settings.language === 'pt' ? 'Limite de Segurança' : 'Safety Limit'}: {formatCurrency(settings.safety_threshold)}</span>
-                  </button>
-                </div>
-                <h2 
-                  onClick={() => {
-                    setSettingsModalType('balance');
-                    setIsSettingsModalOpen(true);
-                  }}
-                  className="text-4xl font-bold mt-2 tracking-tight cursor-pointer hover:text-zinc-300 transition-colors"
-                >
-                  {formatCurrency(effectiveBalance)}
-                </h2>
-                
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  <div 
-                    onClick={() => {
-                      setSettingsModalType('spending');
-                      setIsSettingsModalOpen(true);
-                    }}
-                    className="bg-white/5 rounded-2xl p-3 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
-                  >
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">{t.weeklySpending}</p>
-                    <p className="text-sm font-bold">{formatCurrency(settings.weekly_spending_estimate)}</p>
-                  </div>
-                  <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Status {forecastWeeks} {t.weeks.substring(0, 3)}.</p>
-                    <div className="flex items-center gap-1.5">
-                      {forecast.some(w => w.is_below_threshold) ? (
-                        <>
-                          <AlertTriangle size={14} className="text-rose-500" />
-                          <span className="text-sm font-bold text-rose-500">{t.risk}</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={14} className="text-emerald-500" />
-                          <span className="text-sm font-bold text-emerald-500">{t.safe}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
-            </div>
-
-            {/* Smart Alerts */}
-            <div className="space-y-2">
-              {smartAlerts.map((alert, idx) => (
-                <div 
-                  key={idx} 
-                  className={cn(
-                    "rounded-2xl p-4 flex items-center gap-3 border animate-in slide-in-from-left duration-300",
-                    alert.type === 'danger' && "bg-rose-50 border-rose-100 text-rose-900",
-                    alert.type === 'warning' && "bg-amber-50 border-amber-100 text-amber-900",
-                    alert.type === 'success' && "bg-emerald-50 border-emerald-100 text-emerald-900",
-                    alert.type === 'info' && "bg-blue-50 border-blue-100 text-blue-900"
-                  )}
-                >
-                  <div className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                    alert.type === 'danger' && "bg-rose-100 text-rose-600",
-                    alert.type === 'warning' && "bg-amber-100 text-amber-600",
-                    alert.type === 'success' && "bg-emerald-100 text-emerald-600",
-                    alert.type === 'info' && "bg-blue-100 text-blue-600"
-                  )}>
-                    <alert.icon size={18} />
-                  </div>
-                  <p className="text-xs font-bold leading-tight">{alert.message}</p>
-                </div>
-              ))}
-            </div>
+            {/* Financial Health Section */}
+            <FinancialHealth 
+              settings={settings}
+              forecast={forecast}
+              effectiveBalance={effectiveBalance}
+              forecastWeeks={forecastWeeks}
+              formatCurrency={formatCurrency}
+              onUpdateSettings={handleUpdateSettings}
+              onOpenSettings={(type) => {
+                setSettingsModalType(type);
+                setIsSettingsModalOpen(true);
+              }}
+              smartAlerts={smartAlerts}
+              t={t}
+            />
 
             {/* Currency Converter / Remittance Card */}
             <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm space-y-4">
@@ -1631,102 +1426,14 @@ function App() {
                   </button>
                 </div>
               </div>
-              <div id="forecast-chart" className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart key={forecastWeeks} data={forecast} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                    {highlightedWeek !== null && (
-                      <ReferenceLine x={forecast[highlightedWeek - 1]?.start_date} stroke="#18181b" strokeDasharray="3 3" />
-                    )}
-                    <defs>
-                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#18181b" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorSim" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                    <XAxis 
-                      dataKey="start_date" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                      tickFormatter={(val) => format(parseISO(val), 'dd/MM')}
-                      minTickGap={30}
-                    />
-                    <YAxis hide domain={['auto', 'auto']} padding={{ top: 20, bottom: 20 }} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)' }}
-                      labelFormatter={(val) => format(parseISO(val), 'dd MMMM yyyy')}
-                      formatter={(val: number, name: string) => [
-                        formatCurrency(val), 
-                        name === 'projected_balance' ? 'Real' : 'Simulated'
-                      ]}
-                    />
-                    <ReferenceLine 
-                      y={settings.safety_threshold} 
-                      stroke="#f43f5e" 
-                      strokeDasharray="3 3" 
-                      label={{ 
-                        position: 'top', 
-                        value: settings.language === 'pt' ? 'Limite' : 'Limit', 
-                        fill: '#f43f5e', 
-                        fontSize: 10, 
-                        fontWeight: 'bold' 
-                      }} 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="projected_balance" 
-                      stroke="#18181b" 
-                      strokeWidth={3} 
-                      fillOpacity={1} 
-                      fill="url(#colorBalance)" 
-                      name="projected_balance"
-                    />
-                    {simulation.isActive && (
-                      <Area 
-                        type="monotone" 
-                        dataKey="simulated_balance" 
-                        stroke="#f59e0b" 
-                        strokeWidth={3} 
-                        strokeDasharray="6 6"
-                        fillOpacity={1} 
-                        fill="url(#colorSim)" 
-                        name="simulated_balance"
-                      />
-                    )}
-                    
-                    {/* Goals on Chart */}
-                    {goals.filter(g => !g.is_completed).map(goal => {
-                      const goalDate = parseISO(goal.target_date);
-                      const today = new Date();
-                      const maxDate = addWeeks(startOfWeek(today), forecastWeeks);
-                      
-                      if (isWithinInterval(goalDate, { start: today, end: maxDate })) {
-                        return (
-                          <ReferenceLine 
-                            key={goal.id}
-                            x={goal.target_date}
-                            stroke="#8b5cf6"
-                            strokeDasharray="5 5"
-                            label={{ 
-                              position: 'top', 
-                              value: `Goal: ${goal.name}`, 
-                              fill: '#8b5cf6', 
-                              fontSize: 10,
-                              fontWeight: 'bold'
-                            }}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <ForecastGraph 
+                forecast={forecast}
+                settings={settings}
+                goals={goals}
+                formatCurrency={formatCurrency}
+                highlightedWeek={highlightedWeek}
+                simulation={simulation}
+              />
             </div>
 
             {/* Forecast List */}
