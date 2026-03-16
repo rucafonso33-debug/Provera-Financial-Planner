@@ -104,13 +104,19 @@ export function calculateForecast(
     events.forEach(evt => {
       const evtDate = parseISO(evt.date);
       if (isWithinInterval(evtDate, { start: weekStart, end: weekEnd })) {
-        weekExpenseTotal += evt.amount;
-        weekSimExpenseTotal += evt.amount;
-        weekEvents.push(`${evt.description} (-${evt.amount})`);
+        if (evt.type === 'income') {
+          weekIncomeTotal += evt.amount;
+          weekSimIncomeTotal += evt.amount;
+          weekIncomes.push(`${evt.description} (${evt.amount})`);
+        } else {
+          weekExpenseTotal += evt.amount;
+          weekSimExpenseTotal += evt.amount;
+          weekEvents.push(`${evt.description} (-${evt.amount})`);
+        }
         movements.push({
           name: evt.description,
           amount: evt.amount,
-          type: 'event'
+          type: evt.type === 'income' ? 'income' : 'event'
         });
       }
     });

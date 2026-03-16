@@ -3,10 +3,12 @@ export interface AppSettings {
   weekly_spending_estimate: number;
   safety_threshold: number;
   is_couple_mode: boolean;
+  user_name: string;
+  partner_name: string;
   currency: string;
   remittance_currency: string;
   exchange_rate: number;
-  language: 'en' | 'pt';
+  language: 'en' | 'pt' | 'es' | 'fr' | 'de' | 'it' | 'zh' | 'ja' | 'hi';
   onboarding_completed: boolean;
   last_exchange_update?: string;
   balance_last_updated?: string;
@@ -17,7 +19,7 @@ export interface Income {
   name: string;
   amount: number;
   day_of_month: number;
-  owner: 'rodrigo' | 'ana' | 'shared';
+  owner: 'me' | 'partner' | 'shared';
 }
 
 export interface FixedExpense {
@@ -25,7 +27,7 @@ export interface FixedExpense {
   name: string;
   amount: number;
   day_of_month: number;
-  owner?: 'rodrigo' | 'ana' | 'shared';
+  owner?: 'me' | 'partner' | 'shared';
 }
 
 export interface FutureEvent {
@@ -33,6 +35,7 @@ export interface FutureEvent {
   description: string;
   amount: number;
   date: string; // ISO string
+  type: 'income' | 'expense';
 }
 
 export interface Movement {

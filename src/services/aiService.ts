@@ -86,47 +86,54 @@ export const generateFinancialAnalysis = async (data: {
     }
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          healthSummary: { type: Type.STRING },
-          healthStatus: { type: Type.STRING, enum: ["Good", "Moderate", "Risk"] },
-          insights: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                type: { type: Type.STRING, enum: ["risk", "suggestion", "impact", "positive"] },
-                message: { type: Type.STRING },
-                action: {
-                  type: Type.OBJECT,
-                  properties: {
-                    type: { type: Type.STRING, enum: ["update_spending", "update_threshold", "add_event"] },
-                    value: { type: Type.NUMBER },
-                    label: { type: Type.STRING }
-                  },
-                  required: ["type", "value", "label"]
-                }
-              },
-              required: ["type", "message"]
+  console.log("Generating AI analysis with prompt length:", prompt.length);
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            healthSummary: { type: Type.STRING },
+            healthStatus: { type: Type.STRING, enum: ["Good", "Moderate", "Risk"] },
+            insights: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  type: { type: Type.STRING, enum: ["risk", "suggestion", "impact", "positive"] },
+                  message: { type: Type.STRING },
+                  action: {
+                    type: Type.OBJECT,
+                    properties: {
+                      type: { type: Type.STRING, enum: ["update_spending", "update_threshold", "add_event"] },
+                      value: { type: Type.NUMBER },
+                      label: { type: Type.STRING }
+                    },
+                    required: ["type", "value", "label"]
+                  }
+                },
+                required: ["type", "message"]
+              }
+            },
+            suggestions: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
             }
           },
-          suggestions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          }
-        },
-        required: ["healthSummary", "healthStatus", "insights", "suggestions"]
+          required: ["healthSummary", "healthStatus", "insights", "suggestions"]
+        }
       }
-    }
-  });
+    });
 
-  return JSON.parse(response.text || "{}");
+    console.log("AI analysis response received.");
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("AI Analysis Error:", error);
+    throw error;
+  }
 };
 
 export const askFinancialQuestion = async (
@@ -160,6 +167,13 @@ export const askFinancialQuestion = async (
     }))
   });
 
-  const response = await chat.sendMessage({ message: question });
-  return response.text || "Sorry, I couldn't process your question.";
+  console.log("Asking AI question:", question);
+  try {
+    const response = await chat.sendMessage({ message: question });
+    console.log("AI chat response received.");
+    return response.text || "Sorry, I couldn't process your question.";
+  } catch (error) {
+    console.error("AI Chat Error:", error);
+    throw error;
+  }
 };

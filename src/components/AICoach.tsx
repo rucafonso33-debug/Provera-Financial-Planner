@@ -14,6 +14,7 @@ interface AICoachProps {
   isAsking: boolean;
   onAsk: (question: string) => void;
   onApplyAction: (action: any) => void;
+  t: any;
 }
 
 export const AICoach: React.FC<AICoachProps> = ({
@@ -25,7 +26,8 @@ export const AICoach: React.FC<AICoachProps> = ({
   chatHistory,
   isAsking,
   onAsk,
-  onApplyAction
+  onApplyAction,
+  t
 }) => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,7 @@ export const AICoach: React.FC<AICoachProps> = ({
               <Bot size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight">AI Financial Coach</h2>
+              <h2 className="text-xl font-black tracking-tight">{t.aiCoach}</h2>
               <p className="text-[10px] text-indigo-200 uppercase font-bold tracking-widest">Powered by Provera AI</p>
             </div>
           </div>
@@ -73,7 +75,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                 onClick={onRunAnalysis}
                 className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
               >
-                Run Analysis
+                {t.runAnalysis}
               </button>
             </div>
           ) : isAnalyzing ? (
@@ -81,7 +83,7 @@ export const AICoach: React.FC<AICoachProps> = ({
               <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-600 animate-pulse">
                 <Sparkles size={40} />
               </div>
-              <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Analyzing your data...</p>
+              <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">{t.analyzing}</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -202,7 +204,7 @@ export const AICoach: React.FC<AICoachProps> = ({
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question..."
+              placeholder={t.askAi}
               className="w-full bg-white border border-zinc-200 rounded-2xl pl-6 pr-14 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none transition-all shadow-sm"
             />
             <button 

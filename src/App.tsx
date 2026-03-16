@@ -89,6 +89,7 @@ import { calculateForecast } from './services/forecastService';
 import { cn } from './lib/utils';
 import { enUS } from 'date-fns/locale';
 import { fetchExchangeRates } from './services/exchangeService';
+import { TRANSLATIONS, Language } from './translations';
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, ChatMessage, FinancialGoal, Movement } from './types';
 import { generateFinancialAnalysis, askFinancialQuestion } from './services/aiService';
 import ReactMarkdown from 'react-markdown';
@@ -126,6 +127,8 @@ function App() {
     weekly_spending_estimate: 0,
     safety_threshold: 1000,
     is_couple_mode: true,
+    user_name: 'Me',
+    partner_name: 'Partner',
     currency: 'CHF',
     remittance_currency: 'EUR',
     exchange_rate: 1.05,
@@ -199,10 +202,10 @@ function App() {
 
     const userId = user.uid;
 
-    // Settings
     const settingsUnsubscribe = onSnapshot(doc(db, 'users', userId, 'settings', 'current'), (snapshot) => {
       if (snapshot.exists()) {
-        setSettings(snapshot.data() as AppSettings);
+        const data = snapshot.data() as AppSettings;
+        setSettings(data);
       } else {
         // Initialize settings if they don't exist
         const initialSettings: AppSettings = {
@@ -210,6 +213,8 @@ function App() {
           weekly_spending_estimate: 0,
           safety_threshold: 1000,
           is_couple_mode: true,
+          user_name: 'Me',
+          partner_name: 'Partner',
           currency: 'CHF',
           remittance_currency: 'EUR',
           exchange_rate: 1.05,
@@ -515,33 +520,7 @@ function App() {
     return { status: 'Risk', color: 'text-rose-500', explanation: `Your balance falls below the safety limit in week ${firstWeekBelow.week_number}.` };
   }, [forecast]);
 
-  const t = {
-    forecast: 'Forecast',
-    events: 'Events',
-    goals: 'Goals',
-    settings: 'Settings',
-    currentBalance: 'Current Balance',
-    weeklySpending: 'Weekly Spending',
-    safetyLimit: 'Safety Limit',
-    projection: 'Projection',
-    weeks: 'Weeks',
-    year: '1 Year',
-    simulate: 'Simulate',
-    income: 'Income',
-    expense: 'Expense',
-    event: 'Event',
-    risk: 'Risk',
-    safe: 'Safe',
-    timeline: 'Timeline',
-    details: 'View details',
-    month: 'Month',
-    language: 'Language',
-    currency: 'Currency',
-    remittance: 'Remittance',
-    exchangeRate: 'Exchange Rate',
-    coupleMode: 'Couple Mode',
-    sharedManagement: 'Shared Management',
-  };
+  const t = TRANSLATIONS[settings.language as Language] || TRANSLATIONS.en;
 
   const formatCurrency = (value: number, currencyCode?: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -637,6 +616,8 @@ function App() {
           weekly_spending_estimate: 0,
           safety_threshold: 1000,
           is_couple_mode: true,
+          user_name: 'Me',
+          partner_name: 'Partner',
           currency: 'CHF',
           remittance_currency: 'EUR',
           exchange_rate: 1.05,
@@ -697,7 +678,7 @@ function App() {
                   <button 
                     onClick={() => {
                       setSettings(s => ({ ...s, is_couple_mode: false }));
-                      setOnboardingStep(1);
+                      setOnboardingStep(0.5);
                     }}
                     className="group bg-white/10 hover:bg-white/20 p-6 rounded-[32px] border border-white/5 transition-all text-left flex items-center gap-6"
                   >
@@ -713,7 +694,7 @@ function App() {
                   <button 
                     onClick={() => {
                       setSettings(s => ({ ...s, is_couple_mode: true }));
-                      setOnboardingStep(1);
+                      setOnboardingStep(0.5);
                     }}
                     className="group bg-white/10 hover:bg-white/20 p-6 rounded-[32px] border border-white/5 transition-all text-left flex items-center gap-6"
                   >
@@ -726,6 +707,60 @@ function App() {
                     </div>
                   </button>
                 </div>
+                
+                <p className="text-[10px] text-zinc-500 text-center font-bold uppercase tracking-widest">
+                  Don't worry, you can change this later in settings.
+                </p>
+              </div>
+            )}
+
+            {/* Step 0.5: Name Customization */}
+            {onboardingStep === 0.5 && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-4">
+                  <div className="w-20 h-20 bg-white/10 rounded-[32px] flex items-center justify-center mx-auto mb-6">
+                    <UserIcon size={40} className="text-white" />
+                  </div>
+                  <h2 className="text-3xl font-black text-center tracking-tight leading-tight">
+                    Who are <span className="text-emerald-400">we</span>?
+                  </h2>
+                  <p className="text-zinc-400 text-center text-sm max-w-[280px] mx-auto leading-relaxed">
+                    Personalize the names for your financial tracking.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Your Name</label>
+                    <input 
+                      type="text" 
+                      value={settings.user_name}
+                      onChange={(e) => setSettings(s => ({ ...s, user_name: e.target.value }))}
+                      className="w-full bg-white/10 border-none rounded-2xl px-4 py-4 text-lg font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                      placeholder="e.g. Me"
+                    />
+                  </div>
+
+                  {settings.is_couple_mode && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Partner's Name</label>
+                      <input 
+                        type="text" 
+                        value={settings.partner_name}
+                        onChange={(e) => setSettings(s => ({ ...s, partner_name: e.target.value }))}
+                        className="w-full bg-white/10 border-none rounded-2xl px-4 py-4 text-lg font-bold focus:ring-2 focus:ring-white outline-none transition-all"
+                        placeholder="e.g. Partner"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setOnboardingStep(1)}
+                  className="w-full bg-white text-zinc-900 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  Continue
+                </button>
               </div>
             )}
 
@@ -800,7 +835,9 @@ function App() {
                     <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                       <div>
                         <p className="font-bold text-sm">{inc.name}</p>
-                        <p className="text-[10px] text-zinc-500 uppercase font-black">{inc.owner} • Day {inc.day_of_month}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase font-black">
+                          {inc.owner === 'me' ? settings.user_name : inc.owner === 'partner' ? settings.partner_name : 'Both'} • Day {inc.day_of_month}
+                        </p>
                       </div>
                       <p className="font-black text-emerald-400">+{formatCurrency(inc.amount)}</p>
                     </div>
@@ -830,7 +867,7 @@ function App() {
                   </div>
                   {settings.is_couple_mode && (
                     <div className="grid grid-cols-3 gap-2">
-                      {['rodrigo', 'partner', 'shared'].map(owner => (
+                      {['me', 'partner', 'shared'].map(owner => (
                         <button
                           key={owner}
                           id={`owner-${owner}`}
@@ -847,7 +884,7 @@ function App() {
                             owner === 'shared' ? "bg-white text-zinc-900" : "bg-white/10 text-white"
                           )}
                         >
-                          {owner === 'rodrigo' ? 'Rodrigo' : owner === 'partner' ? 'Partner' : 'Both'}
+                          {owner === 'me' ? settings.user_name : owner === 'partner' ? settings.partner_name : 'Both'}
                         </button>
                       ))}
                     </div>
@@ -902,7 +939,9 @@ function App() {
                     <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                       <div>
                         <p className="font-bold text-sm">{exp.name}</p>
-                        <p className="text-[10px] text-zinc-500 uppercase font-black">{exp.owner ? `${exp.owner} • ` : ''}Day {exp.day_of_month}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase font-black">
+                          {exp.owner === 'me' ? settings.user_name : exp.owner === 'partner' ? settings.partner_name : 'Both'} • Day {exp.day_of_month}
+                        </p>
                       </div>
                       <p className="font-black text-rose-400">-{formatCurrency(exp.amount)}</p>
                     </div>
@@ -932,7 +971,7 @@ function App() {
                   </div>
                   {settings.is_couple_mode && (
                     <div className="grid grid-cols-3 gap-2">
-                      {['rodrigo', 'partner', 'shared'].map(owner => (
+                      {['me', 'partner', 'shared'].map(owner => (
                         <button
                           key={owner}
                           id={`exp-owner-${owner}`}
@@ -948,7 +987,7 @@ function App() {
                             owner === 'shared' ? "bg-white text-zinc-900" : "bg-white/10 text-white"
                           )}
                         >
-                          {owner === 'rodrigo' ? 'Rodrigo' : owner === 'partner' ? 'Partner' : 'Both'}
+                          {owner === 'me' ? settings.user_name : owner === 'partner' ? settings.partner_name : 'Both'}
                         </button>
                       ))}
                     </div>
@@ -1150,6 +1189,7 @@ function App() {
         isAsking={isAsking}
         onAsk={(q) => handleAskAI(undefined, q)}
         onApplyAction={handleApplyAIAction}
+        t={t}
       />
 
       {/* Header */}
@@ -1165,6 +1205,36 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative group">
+              <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                <Globe size={20} />
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-zinc-100 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 max-h-64 overflow-y-auto">
+                {[
+                  { code: 'en', name: 'English' },
+                  { code: 'pt', name: 'Português' },
+                  { code: 'es', name: 'Español' },
+                  { code: 'fr', name: 'Français' },
+                  { code: 'de', name: 'Deutsch' },
+                  { code: 'it', name: 'Italiano' },
+                  { code: 'zh', name: '中文' },
+                  { code: 'ja', name: '日本語' },
+                  { code: 'hi', name: 'हिन्दी' }
+                ].map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleSaveSettings({ ...settings, language: lang.code as Language })}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition-colors",
+                      settings.language === lang.code ? "bg-zinc-100 text-zinc-900" : "text-zinc-500 hover:bg-zinc-50"
+                    )}
+                  >
+                    {lang.name}
+                    {settings.language === lang.code && <CheckCircle2 size={14} className="text-emerald-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button 
               onClick={() => setRunTutorial(true)}
               className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors"
@@ -1655,6 +1725,29 @@ function App() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Your Name</label>
+                    <input 
+                      type="text" 
+                      value={settings.user_name}
+                      onChange={(e) => handleSaveSettings({...settings, user_name: e.target.value})}
+                      className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
+                    />
+                  </div>
+                  {settings.is_couple_mode && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase">Partner's Name</label>
+                      <input 
+                        type="text" 
+                        value={settings.partner_name}
+                        onChange={(e) => handleSaveSettings({...settings, partner_name: e.target.value})}
+                        className="w-full bg-zinc-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase">{t.currentBalance}</label>
@@ -1900,8 +1993,8 @@ function App() {
           <div className="space-y-6 animate-in slide-in-from-right duration-500">
             <div className="flex items-center justify-between px-1">
               <div className="space-y-1">
-                <h2 className="text-2xl font-black tracking-tight text-zinc-900">Financial Goals</h2>
-                <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">Plan your future</p>
+                <h2 className="text-2xl font-black tracking-tight text-zinc-900">{t.goals}</h2>
+                <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">{t.planFuture}</p>
               </div>
               <button 
                 onClick={() => { setModalType('goal'); setEditingItem(null); setIsModalOpen(true); }}
@@ -1916,7 +2009,6 @@ function App() {
                 const targetDate = parseISO(goal.target_date);
                 const today = new Date();
                 const totalWeeks = Math.max(1, Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 7)));
-                const neededPerWeek = goal.target_amount / totalWeeks;
                 
                 // Find projected balance at target date
                 const targetWeek = forecast.find(w => {
@@ -1928,6 +2020,12 @@ function App() {
                 const projectedAtTarget = targetWeek ? targetWeek.projected_balance : null;
                 const isOnTrack = projectedAtTarget !== null ? projectedAtTarget >= goal.target_amount : null;
                 
+                // Improved calculation: how much EXTRA is needed per week
+                const currentReference = projectedAtTarget !== null ? projectedAtTarget : settings.current_balance;
+                const deficit = Math.max(0, goal.target_amount - currentReference);
+                const extraNeededPerWeek = deficit / totalWeeks;
+                const baseNeededPerWeek = goal.target_amount / totalWeeks;
+
                 return (
                   <div key={goal.id} className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-sm relative group overflow-hidden">
                     <div className="flex items-start justify-between relative z-10">
@@ -1942,31 +2040,33 @@ function App() {
                           <div>
                             <h3 className="text-lg font-black text-zinc-900 leading-tight">{goal.name}</h3>
                             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
-                              By {format(targetDate, 'MMMM yyyy', { locale: enUS })}
+                              {t.by} {format(targetDate, 'MMMM yyyy', { locale: getDateLocale() })}
                             </p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Goal</p>
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t.goal}</p>
                             <p className="text-xl font-black text-zinc-900">{formatCurrency(goal.target_amount)}</p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Weekly Savings</p>
-                            <p className="text-xl font-black text-indigo-600">~{formatCurrency(neededPerWeek)}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t.weeklySavings}</p>
+                            <p className="text-xl font-black text-indigo-600">
+                              ~{formatCurrency(isOnTrack ? baseNeededPerWeek : (baseNeededPerWeek + extraNeededPerWeek))}
+                            </p>
                           </div>
                         </div>
 
                         {projectedAtTarget !== null && (
                           <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Projected Balance at Date</p>
+                              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t.projectedBalanceAtDate}</p>
                               <span className={cn(
                                 "text-[10px] font-black uppercase px-2 py-0.5 rounded-full",
                                 isOnTrack ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
                               )}>
-                                {isOnTrack ? 'On Track' : 'Below Target'}
+                                {isOnTrack ? t.onTrack : t.belowTarget}
                               </span>
                             </div>
                             <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
@@ -1979,7 +2079,7 @@ function App() {
                               ></div>
                             </div>
                             <p className="text-[10px] font-bold text-zinc-500">
-                              Projection: <span className="text-zinc-900">{formatCurrency(projectedAtTarget)}</span>
+                              {t.projection}: <span className="text-zinc-900">{formatCurrency(projectedAtTarget)}</span>
                             </p>
                           </div>
                         )}
@@ -1988,7 +2088,7 @@ function App() {
                           <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 flex items-center gap-3">
                             <Info size={16} className="text-indigo-500 shrink-0" />
                             <p className="text-[10px] font-bold text-indigo-700 leading-relaxed">
-                              This goal is beyond the current forecast period ({forecastWeeks} weeks). To reach {formatCurrency(goal.target_amount)} in {totalWeeks} weeks, you need to save about {formatCurrency(neededPerWeek)} per week.
+                              {t.goalBeyondForecast.replace('{weeks}', forecastWeeks.toString()).replace('{amount}', formatCurrency(goal.target_amount)).replace('{totalWeeks}', totalWeeks.toString()).replace('{needed}', formatCurrency(baseNeededPerWeek))}
                             </p>
                           </div>
                         )}
@@ -2574,7 +2674,7 @@ function App() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">
-                    {modalType === 'goal' ? 'Target Amount' : 'Amount'} ({settings.currency})
+                    {modalType === 'goal' ? t.goalTarget : t.amount} ({settings.currency})
                   </label>
                   <input 
                     name={modalType === 'goal' ? 'target_amount' : 'amount'} 
@@ -2589,7 +2689,7 @@ function App() {
                 
                 {modalType === 'income' || modalType === 'expense' ? (
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Day of Month</label>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">{t.day}</label>
                     <input 
                       name="day_of_month" 
                       type="number" 
@@ -2604,7 +2704,7 @@ function App() {
                 ) : (
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">
-                      {modalType === 'goal' ? 'Target Date' : 'Date'}
+                      {modalType === 'goal' ? t.goalDate : t.date}
                     </label>
                     <input 
                       name={modalType === 'goal' ? 'target_date' : 'date'} 
@@ -2616,6 +2716,32 @@ function App() {
                   </div>
                 )}
               </div>
+
+              {modalType === 'event' && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">{t.type}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'expense', label: t.expense_type, icon: ArrowDownRight, color: 'text-rose-600' },
+                      { id: 'income', label: t.extra, icon: ArrowUpRight, color: 'text-emerald-600' }
+                    ].map(item => (
+                      <label key={item.id} className="relative cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="type" 
+                          value={item.id} 
+                          defaultChecked={(editingItem?.type || 'expense') === item.id}
+                          className="peer sr-only"
+                        />
+                        <div className="flex items-center gap-2 justify-center py-3 rounded-xl bg-zinc-50 border border-zinc-100 text-[10px] font-black uppercase text-zinc-400 peer-checked:bg-zinc-900 peer-checked:text-white peer-checked:border-zinc-900 transition-all">
+                          <item.icon size={14} className={cn("peer-checked:text-white", item.color)} />
+                          {item.label}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {modalType === 'goal' && (
                 <div className="flex items-center gap-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
@@ -2633,7 +2759,7 @@ function App() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Income Owner</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {['rodrigo', 'partner', 'shared'].map(owner => (
+                    {['me', 'partner', 'shared'].map(owner => (
                       <label key={owner} className="relative cursor-pointer">
                         <input 
                           type="radio" 
@@ -2643,7 +2769,7 @@ function App() {
                           className="peer sr-only"
                         />
                         <div className="flex items-center justify-center py-3 rounded-xl bg-zinc-50 border border-zinc-100 text-[10px] font-black uppercase text-zinc-400 peer-checked:bg-zinc-900 peer-checked:text-white peer-checked:border-zinc-900 transition-all">
-                          {owner === 'rodrigo' ? 'Rodrigo' : owner === 'partner' ? 'Partner' : 'Both'}
+                          {owner === 'me' ? settings.user_name : owner === 'partner' ? settings.partner_name : 'Both'}
                         </div>
                       </label>
                     ))}
@@ -2655,7 +2781,7 @@ function App() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Expense Owner</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {['rodrigo', 'partner', 'shared'].map(owner => (
+                    {['me', 'partner', 'shared'].map(owner => (
                       <label key={owner} className="relative cursor-pointer">
                         <input 
                           type="radio" 
@@ -2665,7 +2791,7 @@ function App() {
                           className="peer sr-only"
                         />
                         <div className="flex items-center justify-center py-3 rounded-xl bg-zinc-50 border border-zinc-100 text-[10px] font-black uppercase text-zinc-400 peer-checked:bg-zinc-900 peer-checked:text-white peer-checked:border-zinc-900 transition-all">
-                          {owner === 'rodrigo' ? 'Rodrigo' : owner === 'partner' ? 'Partner' : 'Both'}
+                          {owner === 'me' ? settings.user_name : owner === 'partner' ? settings.partner_name : 'Both'}
                         </div>
                       </label>
                     ))}
@@ -2846,16 +2972,24 @@ function SettingsQuickEdit({ type, settings, effectiveBalance, onClose, onSave }
           </button>
         </div>
         <div className="p-6 space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">New Value ({settings.currency})</label>
-            <input 
-              type="number" 
-              value={value}
-              onChange={(e) => setValue(Number(e.target.value))}
-              autoFocus
-              className="w-full bg-zinc-50 border-none rounded-2xl px-5 py-4 text-2xl font-black outline-none focus:ring-2 focus:ring-zinc-900 transition-all shadow-inner" 
-            />
-          </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">New Value ({settings.currency})</label>
+              <input 
+                type="number" 
+                value={value}
+                onChange={(e) => setValue(Number(e.target.value))}
+                autoFocus
+                className="w-full bg-zinc-50 border-none rounded-2xl px-5 py-4 text-2xl font-black outline-none focus:ring-2 focus:ring-zinc-900 transition-all shadow-inner" 
+              />
+              {type === 'balance' && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 mt-2">
+                  <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-bold text-amber-700 leading-tight">
+                    {TRANSLATIONS[settings.language as Language]?.currencyWarning || TRANSLATIONS.en.currencyWarning}
+                  </p>
+                </div>
+              )}
+            </div>
           <button 
             onClick={() => onSave({ [field]: value })}
             className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold text-sm hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 flex items-center justify-center gap-2"
