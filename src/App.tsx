@@ -87,7 +87,7 @@ import { FinancialHealth } from './components/FinancialHealth';
 import { ForecastGraph } from './components/ForecastGraph';
 import { calculateForecast } from './services/forecastService';
 import { cn } from './lib/utils';
-import { enUS } from 'date-fns/locale';
+import { enUS, ptBR } from 'date-fns/locale';
 import { fetchExchangeRates } from './services/exchangeService';
 import { TRANSLATIONS, Language } from './translations';
 import { AppSettings, Income, FixedExpense, FutureEvent, ForecastWeek, SimulationState, AIAnalysis, ChatMessage, FinancialGoal, Movement } from './types';
@@ -290,6 +290,7 @@ function App() {
   };
 
   const handleRunAIAnalysis = async () => {
+    console.log("Running AI Analysis...");
     setIsAnalyzing(true);
     try {
       const analysis = await generateFinancialAnalysis({
@@ -314,6 +315,7 @@ function App() {
     const finalQuestion = question || chatInput;
     if (!finalQuestion.trim() || isAsking) return;
 
+    console.log("Asking AI:", finalQuestion);
     const userMessage: ChatMessage = { role: 'user', text: finalQuestion };
     setChatHistory(prev => [...prev, userMessage]);
     if (!question) setChatInput('');
@@ -329,6 +331,7 @@ function App() {
         simulation
       }, chatHistory);
       
+      console.log("AI Response received");
       const modelMessage: ChatMessage = { role: 'model', text: response };
       setChatHistory(prev => [...prev, modelMessage]);
     } catch (error) {
@@ -523,10 +526,14 @@ function App() {
   const t = TRANSLATIONS[settings.language as Language] || TRANSLATIONS.en;
 
   const formatCurrency = (value: number, currencyCode?: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(settings.language === 'pt' ? 'pt-BR' : 'en-US', {
       style: 'currency',
       currency: currencyCode || settings.currency,
     }).format(value);
+  };
+
+  const getDateLocale = () => {
+    return settings.language === 'pt' ? ptBR : enUS;
   };
 
   const formatRemittance = (value: number) => {
@@ -1503,8 +1510,8 @@ function App() {
             </div>
 
             {/* Chart */}
-            <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm h-[400px]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="bg-white rounded-3xl p-6 border border-zinc-200 shadow-sm h-[450px] flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.projection} {forecastWeeks} {t.weeks}</h3>
                 <div className="flex flex-wrap items-center gap-2">
                   <select 
@@ -1578,14 +1585,16 @@ function App() {
                   </button>
                 </div>
               </div>
-              <ForecastGraph 
-                forecast={forecast}
-                settings={settings}
-                goals={goals}
-                formatCurrency={formatCurrency}
-                highlightedWeek={highlightedWeek}
-                simulation={simulation}
-              />
+              <div className="flex-1 min-h-0">
+                <ForecastGraph 
+                  forecast={forecast}
+                  settings={settings}
+                  goals={goals}
+                  formatCurrency={formatCurrency}
+                  highlightedWeek={highlightedWeek}
+                  simulation={simulation}
+                />
+              </div>
             </div>
 
             {/* Forecast List */}
@@ -2412,227 +2421,6 @@ function App() {
           </div>
         </div>
       )}
-      {/* AI Panel */}
-      {isAIPanelOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] overflow-hidden animate-in slide-in-from-bottom duration-500 shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="px-8 py-6 border-b border-zinc-100 flex items-center justify-between bg-indigo-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                  <Brain size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black tracking-tight text-indigo-900">AI Financial Assistant</h2>
-                  <p className="text-[10px] text-indigo-600 uppercase font-bold tracking-widest">Artificial Intelligence</p>
-                </div>
-              </div>
-              <button onClick={() => setIsAIPanelOpen(false)} className="p-2 text-indigo-400 hover:bg-indigo-100 rounded-xl transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              {/* Analysis Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-indigo-500" />
-                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Health Analysis</h3>
-                  </div>
-                  <button 
-                    onClick={handleRunAIAnalysis}
-                    disabled={isAnalyzing}
-                    className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    {isAnalyzing ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
-                    Analyze Finances
-                  </button>
-                </div>
-
-                {!aiAnalysis && !isAnalyzing && (
-                  <div className="bg-zinc-50 rounded-2xl p-8 text-center border-2 border-dashed border-zinc-100">
-                    <Brain size={32} className="mx-auto text-zinc-200 mb-3" />
-                    <p className="text-xs font-bold text-zinc-400 uppercase">Click analyze to start</p>
-                  </div>
-                )}
-
-                {isAnalyzing && (
-                  <div className="bg-indigo-50 rounded-2xl p-8 text-center border border-indigo-100 animate-pulse">
-                    <Loader2 size={32} className="mx-auto text-indigo-400 mb-3 animate-spin" />
-                    <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">The Assistant is analyzing your data...</p>
-                  </div>
-                )}
-
-                {aiAnalysis && !isAnalyzing && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                    {/* Health Summary */}
-                    <div className={cn(
-                      "p-5 rounded-[24px] border shadow-sm flex items-center gap-4",
-                      aiAnalysis.healthStatus === 'Good' ? "bg-emerald-50 border-emerald-100" :
-                      aiAnalysis.healthStatus === 'Moderate' ? "bg-amber-50 border-amber-100" :
-                      "bg-rose-50 border-rose-100"
-                    )}>
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                        aiAnalysis.healthStatus === 'Good' ? "bg-emerald-100 text-emerald-600" :
-                        aiAnalysis.healthStatus === 'Moderate' ? "bg-amber-100 text-amber-600" :
-                        "bg-rose-100 text-rose-600"
-                      )}>
-                        {aiAnalysis.healthStatus === 'Good' ? <CheckCircle2 size={24} /> :
-                         aiAnalysis.healthStatus === 'Moderate' ? <AlertCircle size={24} /> :
-                         <AlertTriangle size={24} />}
-                      </div>
-                      <div>
-                        <p className={cn(
-                          "text-[10px] font-black uppercase tracking-widest",
-                          aiAnalysis.healthStatus === 'Good' ? "text-emerald-600" :
-                          aiAnalysis.healthStatus === 'Moderate' ? "text-amber-600" :
-                          "text-rose-600"
-                        )}>Financial Health: {aiAnalysis.healthStatus}</p>
-                        <p className="text-sm font-bold text-zinc-900 leading-tight mt-0.5">{aiAnalysis.healthSummary}</p>
-                      </div>
-                    </div>
-
-                    {/* Insights */}
-                    <div className="space-y-2">
-                      {aiAnalysis.insights.map((insight, idx) => (
-                        <div key={idx} className="bg-white border border-zinc-100 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-                            insight.type === 'risk' ? "bg-rose-100 text-rose-600" :
-                            insight.type === 'suggestion' ? "bg-blue-100 text-blue-600" :
-                            insight.type === 'impact' ? "bg-amber-100 text-amber-600" :
-                            "bg-emerald-100 text-emerald-600"
-                          )}>
-                            {insight.type === 'risk' ? <AlertTriangle size={14} /> :
-                             insight.type === 'suggestion' ? <Brain size={14} /> :
-                             insight.type === 'impact' ? <TrendingDown size={14} /> :
-                             <TrendingUp size={14} />}
-                          </div>
-                          <p className={cn(
-                            "text-xs font-bold leading-relaxed",
-                            insight.type === 'risk' ? "text-rose-700" : "text-zinc-700"
-                          )}>{insight.message}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Suggestions */}
-                    <div className="bg-zinc-900 rounded-[24px] p-6 text-white space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Target size={16} className="text-indigo-400" />
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Practical Suggestions</h4>
-                      </div>
-                      <ul className="space-y-3">
-                        {aiAnalysis.suggestions.map((s, idx) => (
-                          <li key={idx} className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
-                            <p className="text-xs font-medium text-zinc-300">{s}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Chat Section */}
-              <div className="space-y-4 pt-4 border-t border-zinc-100">
-                <div className="flex items-center gap-2 px-1">
-                  <MessageSquare size={14} className="text-indigo-500" />
-                  <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Ask AI</h3>
-                </div>
-
-                <div className="space-y-4">
-                  {chatHistory.length === 0 && (
-                    <div className="grid grid-cols-1 gap-2">
-                      {[
-                        "Can I buy a 10,000 CHF car?",
-                        "How much can I spend per week?",
-                        "What happens if I increase income by 300 CHF?"
-                      ].map((q, idx) => (
-                        <button 
-                          key={idx}
-                          onClick={() => { setChatInput(q); }}
-                          className="text-left p-3 bg-zinc-50 hover:bg-zinc-100 rounded-xl text-xs font-bold text-zinc-600 transition-colors border border-zinc-100"
-                        >
-                          "{q}"
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {chatHistory.map((msg, idx) => (
-                      <div key={idx} className={cn(
-                        "flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300",
-                        msg.role === 'user' ? "flex-row-reverse" : "flex-row"
-                      )}>
-                        <div className={cn(
-                          "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                          msg.role === 'user' ? "bg-zinc-900 text-white" : "bg-indigo-100 text-indigo-600"
-                        )}>
-                          {msg.role === 'user' ? <UserIcon size={16} /> : <Bot size={16} />}
-                        </div>
-                        <div className={cn(
-                          "p-4 rounded-2xl text-xs font-medium max-w-[80%] shadow-sm",
-                          msg.role === 'user' ? "bg-zinc-900 text-white rounded-tr-none" : "bg-white border border-zinc-100 text-zinc-800 rounded-tl-none"
-                        )}>
-                          {msg.role === 'model' ? (
-                            <div className="markdown-body">
-                              <ReactMarkdown>{msg.text}</ReactMarkdown>
-                            </div>
-                          ) : msg.text}
-                        </div>
-                      </div>
-                    ))}
-                    {isAsking && (
-                      <div className="flex gap-3 animate-pulse">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
-                          <Bot size={16} />
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-zinc-100 rounded-tl-none">
-                          <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
-                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleAskAI} className="relative">
-                    <input 
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Ask a question..."
-                      className="w-full bg-zinc-50 border-none rounded-2xl pl-5 pr-14 py-4 font-bold outline-none focus:ring-2 focus:ring-indigo-600 transition-all shadow-inner"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={!chatInput.trim() || isAsking}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-90"
-                    >
-                      <Send size={18} />
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-8 border-t border-zinc-100 bg-white">
-              <button 
-                onClick={() => setIsAIPanelOpen(false)}
-                className="w-full bg-zinc-900 text-white py-4 rounded-[20px] font-black uppercase tracking-widest shadow-xl shadow-zinc-200 hover:bg-zinc-800 transition-all active:scale-[0.98]"
-              >
-                Close Assistant
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-md">
