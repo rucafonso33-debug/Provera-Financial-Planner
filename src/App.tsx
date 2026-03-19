@@ -1127,7 +1127,13 @@ function App() {
                   await signInWithCredential(auth, credential);
                 } catch (error: any) {
                   console.error("Google native login error:", error);
-                  alert(`Login failed: ${error?.message || error}`);
+                  alert(
+                    `Login failed: ${JSON.stringify({
+                      message: error?.message,
+                      code: error?.code,
+                      error: error,
+                    })}`
+                  );
                 }
               }}
               className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all shadow-lg"
