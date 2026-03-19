@@ -62,10 +62,6 @@ import {
 import {
   auth,
   db,
-  googleProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
   doc,
@@ -79,6 +75,8 @@ import {
   OperationType,
   User
 } from './firebase';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Tutorial } from './components/Tutorial';
 import { AICoach } from './components/AICoach';
@@ -175,21 +173,17 @@ function App() {
 
   // Auth Listener
   useEffect(() => {
+    GoogleAuth.initialize({
+      scopes: ['profile', 'email'],
+      serverClientId: '594839173707-t4524i86tkgbpvp6a36rib20620uofpd.apps.googleusercontent.com',
+      forceCodeForRefreshToken: false,
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log("Auth state changed:", user ? "Logged in" : "Logged out");
       setUser(user);
       setIsAuthReady(true);
     });
-
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("Redirect login success:", result.user.email);
-        }
-      })
-      .catch((error) => {
-        console.error("Redirect login error:", error);
-      });
 
     return () => unsubscribe();
   }, []);
@@ -1122,35 +1116,24 @@ function App() {
             <button
               onClick={async () => {
                 try {
-                  console.log("Starting popup login...");
-                  
-                await signInWithRedirect(auth, googleProvider);
-                } catch (error: any) {
-                  console.error("Popup login error:", error);
-                  if (error.code === 'auth/popup-blocked') {
-                    alert("Popup blocked! Please allow popups for this site or try the 'Redirect' option below.");
-                  } else if (error.code === 'auth/unauthorized-domain') {
-                    alert(`Domain not authorized. Please add ${window.location.hostname} to Firebase Authorized Domains.`);
-                  } else {
-                    alert(`Login failed: ${error.message}`);
+                  const googleUser = await GoogleAuth.signIn();
+                  const idToken = googleUser.authentication?.idToken;
+
+                  if (!idToken) {
+                    throw new Error('Google login sem idToken');
                   }
+
+                  const credential = GoogleAuthProvider.credential(idToken);
+                  await signInWithCredential(auth, credential);
+                } catch (error: any) {
+                  console.error("Google native login error:", error);
+                  alert(`Login failed: ${error?.message || error}`);
                 }
               }}
               className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all shadow-lg"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
               Continue with Google
-            </button>
-
-            <button
-              onClick={async () => {
-                try {
-                } catch (error: any) {
-                  alert(`Redirect failed: ${error.message}`);
-                }
-              }}
-              className="w-full bg-white text-zinc-600 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-50 transition-all border border-zinc-200"
-            >
             </button>
           </div>
           <div className="pt-4">
