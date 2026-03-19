@@ -21,12 +21,12 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBvtW1M87taHK47Z1GqtxmwBXXpwvGCLfc',
-  authDomain: 'gen-lang-client-0682492679.firebaseapp.com',
-  projectId: 'gen-lang-client-0682492679',
-  storageBucket: 'gen-lang-client-0682492679.firebasestorage.app',
-  messagingSenderId: '594839173707',
-  appId: '1:594839173707:android:8d25e6913f5face22a2bce',
+  apiKey: "AIzaSyAbecmnRhoqaegoFC_pKvkljIWEQwg3K6B8",
+  authDomain: "gen-lang-client-0682492679.firebaseapp.com",
+  projectId: "gen-lang-client-0682492679",
+  storageBucket: "gen-lang-client-0682492679.firebasestorage.app",
+  messagingSenderId: "594839173707",
+  appId: "1:594839173707:web:7fb45d4a07b2bab32a2bce",
 };
 
 // Initialize Firebase SDK
