@@ -3,7 +3,7 @@ import {
   getAuth,
   signOut,
   onAuthStateChanged,
-  User
+  User,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -17,27 +17,21 @@ import {
   getDocs,
   query,
   where,
-  getDocFromServer
+  getDocFromServer,
 } from 'firebase/firestore';
-import firebaseConfigInternal from '../firebase-applet-config.json';
 
-// Use environment variables if available (Vercel), otherwise fallback to internal config (AI Studio)
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigInternal.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigInternal.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigInternal.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigInternal.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigInternal.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigInternal.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigInternal.measurementId,
+  apiKey: 'AIzaSyBvtW1M87taHK47Z1GqtxmwBXXpwvGCLfc',
+  authDomain: 'gen-lang-client-0682492679.firebaseapp.com',
+  projectId: 'gen-lang-client-0682492679',
+  storageBucket: 'gen-lang-client-0682492679.firebasestorage.app',
+  messagingSenderId: '594839173707',
+  appId: '1:594839173707:android:8d25e6913f5face22a2bce',
 };
-
-const firestoreDatabaseId =
-  import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfigInternal.firestoreDatabaseId;
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firestoreDatabaseId);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 export enum OperationType {
@@ -68,7 +62,11 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -88,7 +86,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+
+  console.error('Firestore Error:', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -97,11 +96,15 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
+    if (
+      error instanceof Error &&
+      error.message.includes('the client is offline')
+    ) {
       console.error('Please check your Firebase configuration.');
     }
   }
 }
+
 testConnection();
 
 export {
