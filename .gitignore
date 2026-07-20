@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Android signing credentials must never be committed.
+android/*.keystore
+android/app/*.keystore
+android/keystore.properties
