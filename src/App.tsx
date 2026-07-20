@@ -76,7 +76,8 @@ import {
   User
 } from './firebase';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Tutorial } from './components/Tutorial';
 import { AICoach } from './components/AICoach';
@@ -115,6 +116,13 @@ const SUPPORTED_CURRENCIES = [
   { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
   { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
 ];
+
+const LANDING_FEATURES = [
+  { icon: Calendar, title: '12-week forecast', text: 'Spot low-balance weeks before they arrive.' },
+  { icon: Users, title: 'Couple mode', text: 'Plan shared and individual cash flow together.' },
+  { icon: TrendingUp, title: 'Scenario planning', text: 'Test spending changes and one-off purchases.' },
+  { icon: Brain, title: 'AI coach', text: 'Get practical observations from your own forecast.' },
+] as const;
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -170,14 +178,18 @@ function App() {
   }>({ incomes: [], expenses: [] });
   const [converterAmount, setConverterAmount] = useState<number>(0);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // Auth Listener
   useEffect(() => {
-    GoogleAuth.initialize({
-      scopes: ['profile', 'email'],
-      serverClientId: '594839173707-t4524i86tkgbpvp6a36rib20620uofpd.apps.googleusercontent.com',
-      forceCodeForRefreshToken: false,
-    });
+    if (Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize({
+        scopes: ['profile', 'email'],
+        clientId: '594839173707-t4524i86tkgbpvp6a36rib20620uofpd.apps.googleusercontent.com',
+        grantOfflineAccess: false,
+      });
+    }
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log("Auth state changed:", user ? "Logged in" : "Logged out");
@@ -187,6 +199,30 @@ function App() {
 
     return () => unsubscribe();
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    setIsSigningIn(true);
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const googleUser = await GoogleAuth.signIn();
+        const idToken = googleUser.authentication?.idToken;
+        if (!idToken) throw new Error('Google did not return a valid identity token.');
+
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      }
+    } catch (error: unknown) {
+      console.error('Google sign-in error:', error);
+      const message = error instanceof Error ? error.message : 'Unable to complete sign-in.';
+      setAuthError(message);
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
 
   // Firestore Sync
   useEffect(() => {
@@ -320,7 +356,8 @@ function App() {
         fixedExpenses,
         events,
         forecast,
-        simulation
+        simulation,
+        goals
       }, chatHistory);
       
       console.log("AI Response received");
@@ -1100,54 +1137,103 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-[32px] p-8 shadow-xl border border-zinc-100 text-center space-y-8">
-          <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto text-white shadow-lg shadow-indigo-200">
-            <Wallet size={40} />
+      <div className="min-h-screen bg-[#f7f7fb] text-zinc-900">
+        <header className="max-w-7xl mx-auto px-6 lg:px-10 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+              <Wallet size={23} />
+            </div>
+            <div>
+              <p className="text-xl font-black tracking-tight leading-none">Provera</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 mt-1">Financial Planner</p>
+            </div>
           </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Provera</h1>
-            <p className="text-zinc-500 text-sm leading-relaxed">
-              Master your cash flow with AI-powered forecasting. 
-              Sign in to sync your data across devices.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <button
-              onClick={async () => {
-                try {
-                  const googleUser = await GoogleAuth.signIn();
-                  const idToken = googleUser.authentication?.idToken;
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isSigningIn}
+            className="hidden sm:inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-xs font-black uppercase tracking-wider hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-60 transition-colors"
+          >
+            {isSigningIn ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Sign in
+          </button>
+        </header>
 
-                  if (!idToken) {
-                    throw new Error('Google login sem idToken');
-                  }
+        <main className="max-w-7xl mx-auto px-6 lg:px-10 pt-8 pb-16 lg:pt-20 lg:pb-24">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-20 items-center">
+            <section className="space-y-8">
+              <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em]">
+                <Sparkles className="w-4 h-4" />
+                Plan with a 12-week view
+              </div>
+              <div className="space-y-5">
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-[-0.055em] leading-[0.98]">
+                  See what your money does next.
+                </h1>
+                <p className="text-lg text-zinc-500 leading-relaxed max-w-2xl">
+                  Turn income, bills and future plans into a clear weekly cash-flow forecast. Test decisions before they affect your balance.
+                </p>
+              </div>
 
-                  const credential = GoogleAuthProvider.credential(idToken);
-                  await signInWithCredential(auth, credential);
-                } catch (error: any) {
-                  console.error("Google native login error:", error);
-                  alert(
-                    `Login failed: ${JSON.stringify({
-                      message: error?.message,
-                      code: error?.code,
-                      error: error,
-                    })}`
-                  );
-                }
-              }}
-              className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all shadow-lg"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-              Continue with Google
-            </button>
+              <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+                {LANDING_FEATURES.map(({ icon: FeatureIcon, title, text }) => (
+                  <div key={title} className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm">
+                    <FeatureIcon className="w-5 h-5 text-indigo-600 mb-3" />
+                    <h2 className="text-sm font-black">{title}</h2>
+                    <p className="text-xs text-zinc-500 leading-relaxed mt-1">{text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <aside className="relative">
+              <div className="absolute -inset-6 bg-gradient-to-br from-indigo-200/50 to-fuchsia-100/40 blur-3xl rounded-full" />
+              <div className="relative bg-white rounded-[32px] p-7 sm:p-9 shadow-2xl shadow-indigo-100/70 border border-zinc-100 space-y-7">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">Your private workspace</p>
+                  <h2 className="text-3xl font-black tracking-tight">Build your first forecast</h2>
+                  <p className="text-sm text-zinc-500 leading-relaxed">
+                    Sign in with Google to keep your planning data linked to your account across web and mobile.
+                  </p>
+                </div>
+
+                <div className="space-y-3 text-xs text-zinc-600">
+                  {['Your balance and safety threshold', 'Recurring income and expenses', 'Goals, events and simulations'].map((item) => (
+                    <div key={item} className="flex items-center gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSigningIn}
+                  className="w-full bg-zinc-900 text-white py-4 px-5 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 disabled:opacity-60 transition-all shadow-lg"
+                >
+                  {isSigningIn ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-5 h-5 bg-white rounded-full p-0.5" />
+                  )}
+                  {isSigningIn ? 'Connecting…' : 'Continue with Google'}
+                  {!isSigningIn ? <ArrowRight className="w-4 h-4" /> : null}
+                </button>
+
+                {authError ? (
+                  <p role="alert" className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-700 leading-relaxed">
+                    {authError}
+                  </p>
+                ) : null}
+
+                <p className="text-[10px] text-zinc-400 leading-relaxed text-center">
+                  Provera supports planning and education. It does not replace regulated financial advice.
+                </p>
+              </div>
+            </aside>
           </div>
-          <div className="pt-4">
-            <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">
-              Securely powered by Google Cloud
-            </p>
-          </div>
-        </div>
+        </main>
       </div>
     );
   }
