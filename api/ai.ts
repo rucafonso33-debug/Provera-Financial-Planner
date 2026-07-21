@@ -37,8 +37,7 @@ interface FinancialData {
   }>;
 }
 
-const firebaseApiKey =
-  process.env.FIREBASE_WEB_API_KEY || 'AIzaSyAbecmnRhoqaegoFC_pKvkljIWEQwg3K6B8';
+const firebaseApiKey = process.env.FIREBASE_WEB_API_KEY;
 
 const readBody = (body: unknown): Record<string, unknown> => {
   if (typeof body === 'string') {
@@ -55,7 +54,79 @@ const getBearerToken = (authorization: string | string[] | undefined) => {
   return value?.startsWith('Bearer ') ? value.slice(7) : null;
 };
 
+const asNumber = (value: unknown, fallback = 0) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const asString = (value: unknown, fallback = '') =>
+  typeof value === 'string' ? value : fallback;
+
+const normalizeFinancialData = (value: unknown): FinancialData | null => {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const rawSettings = raw.settings && typeof raw.settings === 'object'
+    ? raw.settings as Record<string, unknown>
+    : null;
+  if (!rawSettings) return null;
+
+  const normalizeList = <T>(candidate: unknown, mapper: (item: Record<string, unknown>) => T) =>
+    Array.isArray(candidate)
+      ? candidate
+          .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+          .map(mapper)
+      : [];
+
+  const rawSimulation = raw.simulation && typeof raw.simulation === 'object'
+    ? raw.simulation as Record<string, unknown>
+    : {};
+
+  return {
+    settings: {
+      current_balance: asNumber(rawSettings.current_balance),
+      weekly_spending_estimate: asNumber(rawSettings.weekly_spending_estimate),
+      safety_threshold: asNumber(rawSettings.safety_threshold, 1000),
+      currency: asString(rawSettings.currency, 'CHF'),
+      is_couple_mode: Boolean(rawSettings.is_couple_mode),
+    },
+    incomes: normalizeList(raw.incomes, (item) => ({
+      name: asString(item.name, 'Income'),
+      amount: asNumber(item.amount),
+      day_of_month: asNumber(item.day_of_month, 1),
+    })),
+    fixedExpenses: normalizeList(raw.fixedExpenses, (item) => ({
+      name: asString(item.name, 'Expense'),
+      amount: asNumber(item.amount),
+      day_of_month: asNumber(item.day_of_month, 1),
+    })),
+    events: normalizeList(raw.events, (item) => ({
+      description: asString(item.description, 'Event'),
+      amount: asNumber(item.amount),
+      date: asString(item.date),
+    })),
+    forecast: normalizeList(raw.forecast, (item) => ({
+      week_number: asNumber(item.week_number),
+      projected_balance: asNumber(item.projected_balance),
+    })),
+    simulation: {
+      isActive: Boolean(rawSimulation.isActive),
+      weeklySpendingDelta: asNumber(rawSimulation.weeklySpendingDelta),
+      oneOffExpenses: Array.isArray(rawSimulation.oneOffExpenses)
+        ? rawSimulation.oneOffExpenses
+        : [],
+    },
+    goals: normalizeList(raw.goals, (item) => ({
+      name: asString(item.name, 'Goal'),
+      target_amount: asNumber(item.target_amount),
+      target_date: asString(item.target_date),
+      is_completed: Boolean(item.is_completed),
+    })),
+  };
+};
+
 const verifyFirebaseToken = async (token: string) => {
+  if (!firebaseApiKey) {
+    throw new Error('FIREBASE_WEB_API_KEY is not configured.');
+  }
+
   const response = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
     {
@@ -93,7 +164,7 @@ UPCOMING EVENTS
 ${data.events.map((event) => `- ${event.description}: ${event.amount} ${data.settings.currency} on ${event.date}`).join('\n') || '- None configured'}
 
 12-WEEK PROJECTION
-${data.forecast.map((week) => `- Week ${week.week_number}: ${week.projected_balance} ${data.settings.currency}`).join('\n')}
+${data.forecast.map((week) => `- Week ${week.week_number}: ${week.projected_balance} ${data.settings.currency}`).join('\n') || '- No forecast available'}
 
 SIMULATION
 ${data.simulation.isActive ? `Weekly spending delta ${data.simulation.weeklySpendingDelta}; ${data.simulation.oneOffExpenses.length} one-off simulated expenses.` : 'No active simulation.'}
@@ -158,8 +229,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const body = readBody(req.body);
     const mode = body.mode;
-    const data = body.data as FinancialData | undefined;
-    if (!data?.settings || !Array.isArray(data.forecast)) {
+    const data = normalizeFinancialData(body.data);
+    if (!data) {
       return res.status(400).json({ error: 'Invalid financial context.' });
     }
 
@@ -175,7 +246,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         },
       });
 
-      return res.status(200).json(JSON.parse(response.text || '{}'));
+      const parsed = JSON.parse(response.text || '{}') as Record<string, unknown>;
+      return res.status(200).json({
+        healthSummary: asString(parsed.healthSummary, 'The analysis could not be completed.'),
+        healthStatus:
+          parsed.healthStatus === 'Good' || parsed.healthStatus === 'Moderate' || parsed.healthStatus === 'Risk'
+            ? parsed.healthStatus
+            : 'Moderate',
+        insights: Array.isArray(parsed.insights) ? parsed.insights : [],
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+      });
     }
 
     if (mode === 'question') {
@@ -207,14 +287,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       });
 
       const response = await chat.sendMessage({ message: question });
+      const answer = response.text?.trim();
       return res.status(200).json({
-        answer: response.text || 'I could not process that question.',
+        answer: answer || 'I could not process that question.',
       });
     }
 
     return res.status(400).json({ error: 'Unsupported AI request.' });
   } catch (error) {
     console.error('AI API error', error);
-    return res.status(500).json({ error: 'The AI coach is temporarily unavailable.' });
+    const message = error instanceof Error ? error.message : 'The AI coach is temporarily unavailable.';
+    return res.status(500).json({ error: message });
   }
 }
