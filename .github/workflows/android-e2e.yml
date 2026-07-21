@@ -72,7 +72,10 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-          find "$GITHUB_WORKSPACE/android/app/build/outputs" -type f -name '*.apk' -print
+          cd "$GITHUB_WORKSPACE"
+          cp android/app/build/outputs/apk/debug/app-debug.apk provera-e2e.apk
+          test -f provera-e2e.apk
+          ls -lh provera-e2e.apk
 
       - name: Install Maestro
         run: |
@@ -95,10 +98,7 @@ jobs:
             adb shell settings put global window_animation_scale 0 || true
             adb shell settings put global transition_animation_scale 0 || true
             adb shell settings put global animator_duration_scale 0 || true
-            APK=$(find "$GITHUB_WORKSPACE/android/app/build/outputs/apk" -type f -name '*.apk' | head -n 1)
-            echo "Installing APK: $APK"
-            test -n "$APK"
-            adb install -r -t "$APK" || adb install -r -t "$APK" || adb install -r -t "$APK"
+            adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk" || adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk" || adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk"
             cd "$GITHUB_WORKSPACE"
             maestro test .maestro/smoke.yaml --format junit --output maestro-results.xml
 
