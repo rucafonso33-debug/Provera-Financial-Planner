@@ -8,6 +8,7 @@ on:
       - 'src/**'
       - 'android/**'
       - '.maestro/**'
+      - '.github/scripts/run-android-e2e.sh'
       - '.github/workflows/android-e2e.yml'
       - 'package.json'
       - 'package-lock.json'
@@ -92,15 +93,7 @@ jobs:
           emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -camera-back none
           disable-animations: true
-          script: |
-            adb wait-for-device
-            adb shell input keyevent 82 || true
-            adb shell settings put global window_animation_scale 0 || true
-            adb shell settings put global transition_animation_scale 0 || true
-            adb shell settings put global animator_duration_scale 0 || true
-            adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk" || adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk" || adb install -r -t "$GITHUB_WORKSPACE/provera-e2e.apk"
-            cd "$GITHUB_WORKSPACE"
-            maestro test .maestro/smoke.yaml --format junit --output maestro-results.xml
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/run-android-e2e.sh"
 
       - name: Upload E2E evidence
         if: always()
