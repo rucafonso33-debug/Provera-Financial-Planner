@@ -19,7 +19,7 @@ android {
         // 🔥 VERSION CODE AUTOMÁTICO
         def autoVersionCode = (int)(System.currentTimeMillis() / 1000)
         versionCode autoVersionCode
-        versionName "1.2"
+        versionName "1.2.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
