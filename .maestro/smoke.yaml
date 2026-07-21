@@ -1,0 +1,38 @@
+appId: com.provera.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "How will you use Provera?"
+    timeout: 30000
+- tapOn: "Solo Mode"
+- extendedWaitUntil:
+    visible: "Who are we?"
+    timeout: 10000
+- tapOn:
+    text: "e.g. Me"
+- eraseText
+- inputText: "Test User"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Step 2: Current Balance"
+    timeout: 10000
+- tapOn: "0.00"
+- inputText: "5000"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Step 3: Monthly Incomes"
+    timeout: 10000
+- tapOn: "Income Name (e.g. Salary)"
+- inputText: "Salary"
+- tapOn: "Amount"
+- inputText: "4000"
+- tapOn: "Day (1-31)"
+- inputText: "25"
+- tapOn: "+ Add Income"
+- assertVisible: "Salary"
+- tapOn: "Next Step"
+- extendedWaitUntil:
+    visible: "Step 4: Fixed Expenses"
+    timeout: 10000
+- takeScreenshot: "onboarding-expenses"
