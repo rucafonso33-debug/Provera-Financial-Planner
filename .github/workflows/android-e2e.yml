@@ -19,7 +19,7 @@ concurrency:
 jobs:
   maestro-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -85,10 +85,49 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-snapshot-save
           disable-animations: true
           script: |
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            set -e
+            adb wait-for-device
+
+            echo "Waiting for Android to finish booting..."
+            for i in {1..60}; do
+              if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+                break
+              fi
+              sleep 5
+            done
+
+            adb shell input keyevent 82 || true
+            adb shell settings put global window_animation_scale 0 || true
+            adb shell settings put global transition_animation_scale 0 || true
+            adb shell settings put global animator_duration_scale 0 || true
+
+            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            test -f "$APK"
+
+            echo "Installing APK with retry protection..."
+            installed=false
+            for attempt in 1 2 3 4; do
+              adb kill-server || true
+              adb start-server
+              adb wait-for-device
+              if adb install -r -t "$APK"; then
+                installed=true
+                break
+              fi
+              echo "Install attempt $attempt failed; waiting before retry..."
+              sleep 15
+            done
+
+            if [ "$installed" != "true" ]; then
+              echo "APK installation failed after 4 attempts"
+              adb devices -l || true
+              adb shell getprop || true
+              exit 1
+            fi
+
             maestro test .maestro/smoke.yaml --format junit --output maestro-results.xml
 
       - name: Upload E2E evidence
