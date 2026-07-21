@@ -90,22 +90,15 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -camera-back none
           disable-animations: true
           script: |
-            set -e
             adb wait-for-device
             adb shell input keyevent 82 || true
             adb shell settings put global window_animation_scale 0 || true
             adb shell settings put global transition_animation_scale 0 || true
             adb shell settings put global animator_duration_scale 0 || true
-
-            APK="$(find "$GITHUB_WORKSPACE/android/app/build/outputs/apk" -type f -name '*.apk' | head -n 1)"
-            if [ -z "$APK" ]; then
-              echo "No APK found. Available build outputs:"
-              find "$GITHUB_WORKSPACE/android/app/build/outputs" -maxdepth 6 -type f -print || true
-              exit 1
-            fi
-
+            APK=$(find "$GITHUB_WORKSPACE/android/app/build/outputs/apk" -type f -name '*.apk' | head -n 1)
             echo "Installing APK: $APK"
-            adb install -r -t "$APK" || (sleep 15 && adb wait-for-device && adb install -r -t "$APK") || (sleep 20 && adb wait-for-device && adb install -r -t "$APK")
+            test -n "$APK"
+            adb install -r -t "$APK" || adb install -r -t "$APK" || adb install -r -t "$APK"
             cd "$GITHUB_WORKSPACE"
             maestro test .maestro/smoke.yaml --format junit --output maestro-results.xml
 
