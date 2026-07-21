@@ -19,7 +19,7 @@ concurrency:
 jobs:
   maestro-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -81,18 +81,19 @@ jobs:
       - name: Run Maestro on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
+          api-level: 30
+          target: default
           arch: x86_64
-          profile: pixel_6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-snapshot-save
+          profile: pixel_4
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -camera-back none
           disable-animations: true
           script: |
             set -e
             adb wait-for-device
 
             echo "Waiting for Android to finish booting..."
-            for i in {1..60}; do
+            for i in {1..120}; do
               if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
                 break
               fi
@@ -110,8 +111,6 @@ jobs:
             echo "Installing APK with retry protection..."
             installed=false
             for attempt in 1 2 3 4; do
-              adb kill-server || true
-              adb start-server
               adb wait-for-device
               if adb install -r -t "$APK"; then
                 installed=true
