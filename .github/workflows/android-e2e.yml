@@ -56,8 +56,14 @@ jobs:
               raise SystemExit('Could not locate Firebase auth import in App.tsx')
           text = text.replace(old_import, new_import, 1)
 
+          loading_state = "  const [loading, setLoading] = useState(true);"
+          e2e_loading_state = "  const [loading, setLoading] = useState(import.meta.env.VITE_E2E_TEST_MODE !== 'true');"
+          if loading_state not in text:
+              raise SystemExit('Could not locate loading state in App.tsx')
+          text = text.replace(loading_state, e2e_loading_state, 1)
+
           marker = "  // Firestore Sync\n"
-          block = """  // Test-only authentication. This code exists only in the temporary CI build.\n  useEffect(() => {\n    if (import.meta.env.VITE_E2E_TEST_MODE !== 'true' || !isAuthReady || user || isSigningIn) return;\n\n    setIsSigningIn(true);\n    signInAnonymously(auth)\n      .then(() => setLoading(false))\n      .catch((error) => {\n        console.error('Anonymous E2E sign-in error:', error);\n        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n        setLoading(false);\n      })\n      .finally(() => setIsSigningIn(false));\n  }, [isAuthReady, user, isSigningIn]);\n\n"""
+          block = """  // Test-only authentication. This code exists only in the temporary CI build.\n  useEffect(() => {\n    if (import.meta.env.VITE_E2E_TEST_MODE !== 'true' || !isAuthReady || user || isSigningIn) return;\n\n    setIsSigningIn(true);\n    signInAnonymously(auth)\n      .catch((error) => {\n        console.error('Anonymous E2E sign-in error:', error);\n        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n      })\n      .finally(() => setIsSigningIn(false));\n  }, [isAuthReady, user, isSigningIn]);\n\n"""
 
           if marker not in text:
               raise SystemExit('Could not locate Firestore marker in App.tsx')
