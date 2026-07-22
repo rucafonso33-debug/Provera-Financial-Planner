@@ -1,8 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import {
+  browserLocalPersistence,
   getAuth,
-  signOut,
   onAuthStateChanged,
+  setPersistence,
+  signOut,
   User,
 } from 'firebase/auth';
 import {
@@ -33,6 +35,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Keep the signed-in user stable across reloads and app restarts.
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error('Unable to enable persistent Firebase authentication:', error);
+});
 
 export enum OperationType {
   CREATE = 'create',
