@@ -2,15 +2,6 @@ name: Browser Functional Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'tests/e2e/**'
-      - 'playwright.config.ts'
-      - '.github/workflows/browser-e2e.yml'
-      - 'package.json'
-      - 'package-lock.json'
 
 concurrency:
   group: provera-browser-e2e
