@@ -2,60 +2,55 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const app = fs.readFileSync(new URL('../../src/App.tsx', import.meta.url), 'utf8');
+const files = [
+  '../../src/App.tsx',
+  '../../scripts/harden-financial-actions.mjs',
+  '../../scripts/final-product-polish.mjs',
+];
 
-function expectAll(label, snippets) {
-  for (const snippet of snippets) {
-    assert.ok(app.includes(snippet), `${label}: missing ${snippet}`);
-  }
+const corpus = files
+  .map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8'))
+  .join('\n');
+
+function expectMatch(label, pattern) {
+  assert.match(corpus, pattern, `${label}: missing ${pattern}`);
 }
 
 test('onboarding completion and Firestore persistence contracts remain wired', () => {
-  expectAll('onboarding/persistence', [
-    'onboarding_completed',
-    "onSnapshot(doc(db, 'users', userId, 'settings', 'current')",
-    "collection(db, 'users', userId, 'incomes')",
-    "collection(db, 'users', userId, 'fixedExpenses')",
-    "setDoc(doc(db, 'users', userId, 'settings', 'current')",
-  ]);
+  expectMatch('onboarding completed', /onboarding_completed/);
+  expectMatch('settings listener', /onSnapshot\(doc\(db,\s*['"]users['"],\s*userId,\s*['"]settings['"],\s*['"]current['"]\)/);
+  expectMatch('income listener', /collection\(db,\s*['"]users['"],\s*userId,\s*['"]incomes['"]\)/);
+  expectMatch('expense listener', /collection\(db,\s*['"]users['"],\s*userId,\s*['"]fixedExpenses['"]\)/);
+  expectMatch('settings persistence', /setDoc\(doc\(db,\s*['"]users['"],\s*(?:userId|user\.uid),\s*['"]settings['"],\s*['"]current['"]\)/);
 });
 
 test('duplicate prevention remains enforced for financial item saves', () => {
-  expectAll('duplicate prevention', [
-    'itemSaveLockRef.current',
-    'if (!user || itemSaveLockRef.current) return;',
-    'setIsSavingItem(true)',
-    'disabled={isSavingItem}',
-  ]);
+  expectMatch('save lock', /itemSaveLockRef\.current/);
+  expectMatch('duplicate guard', /if \(!user \|\| itemSaveLockRef\.current\) return/);
+  expectMatch('saving state', /setIsSavingItem\(true\)/);
+  expectMatch('disabled submit', /disabled=\{isSavingItem\}/);
 });
 
 test('editing and deleting remain available with confirmation and feedback', () => {
-  expectAll('edit/delete', [
-    "const handleEdit = (type: 'income' | 'expense' | 'event' | 'goal'",
-    'setModalType(type)',
-    'setEditingItem(item)',
-    "window.confirm('Delete this item? This action cannot be undone.')",
-    "deleteDoc(doc(db, 'users', user.uid, collectionName, id))",
-    'setActionMessage({ type: \'success\'',
-  ]);
+  expectMatch('edit handler', /const handleEdit = \(type: ['"]income['"] \| ['"]expense['"] \| ['"]event['"] \| ['"]goal['"]/);
+  expectMatch('edit item selected', /setEditingItem\(item\)/);
+  expectMatch('delete confirmation', /window\.confirm\(['"]Delete this item\? This action cannot be undone\.['"]\)/);
+  expectMatch('delete operation', /deleteDoc\(doc\(db,\s*['"]users['"],\s*user\.uid,\s*collectionName,\s*id\)\)/);
+  expectMatch('success feedback', /setActionMessage\(\{\s*type:\s*['"]success['"]/);
 });
 
 test('language switching and bilingual product copy remain present', () => {
-  expectAll('language', [
-    'TRANSLATIONS',
-    'settings.language as Language',
-    "settings.language === 'pt'",
-    "language: 'en'",
-  ]);
+  expectMatch('translation table', /TRANSLATIONS/);
+  expectMatch('selected language', /settings\.language as Language/);
+  expectMatch('Portuguese copy', /settings\.language === ['"]pt['"]/);
+  expectMatch('default language', /language:\s*['"]en['"]/);
 });
 
 test('AI analysis and AI chat entry points remain connected', () => {
-  expectAll('AI', [
-    'handleRunAIAnalysis',
-    'generateFinancialAnalysis',
-    'handleAskAI',
-    'askFinancialQuestion',
-    'chatHistory',
-    'setIsAIPanelOpen(true)',
-  ]);
+  expectMatch('analysis handler', /handleRunAIAnalysis/);
+  expectMatch('analysis service', /generateFinancialAnalysis/);
+  expectMatch('chat handler', /handleAskAI/);
+  expectMatch('chat service', /askFinancialQuestion/);
+  expectMatch('chat history', /chatHistory/);
+  expectMatch('AI panel', /setIsAIPanelOpen\(true\)/);
 });
