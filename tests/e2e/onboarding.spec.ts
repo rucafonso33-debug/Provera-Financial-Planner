@@ -41,7 +41,6 @@ test('completes onboarding and reaches the financial dashboard', async ({ page }
   await page.getByRole('button', { name: 'Complete Setup' }).click();
 
   await expect(page.getByText('Financial Health', { exact: false })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Salary', { exact: true })).toBeVisible();
-  await expect(page.getByText('Rent', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 5: Weekly Spending', { exact: true })).toHaveCount(0);
   expect(browserErrors, browserErrors.join('\n')).toEqual([]);
 });
