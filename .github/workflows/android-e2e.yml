@@ -2,17 +2,6 @@ name: Android E2E Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'android/**'
-      - '.maestro/**'
-      - '.github/scripts/run-android-e2e.sh'
-      - '.github/workflows/android-e2e.yml'
-      - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
 
 concurrency:
   group: provera-android-e2e
@@ -68,7 +57,20 @@ jobs:
           text = text.replace(loading_state, "  const [loading, setLoading] = useState(!E2E_TEST_MODE);", 1)
 
           marker = "  // Firestore Sync\n"
-          block = """  // Test-only authentication. This code exists only in the temporary CI build.\n  useEffect(() => {\n    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;\n\n    setIsSigningIn(true);\n    signInAnonymously(auth)\n      .catch((error) => {\n        console.error('Anonymous E2E sign-in error:', error);\n        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n      })\n      .finally(() => setIsSigningIn(false));\n  }, [isAuthReady, user, isSigningIn]);\n\n"""
+          block = """  // Test-only authentication. This code exists only in the temporary CI build.
+  useEffect(() => {
+    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;
+
+    setIsSigningIn(true);
+    signInAnonymously(auth)
+      .catch((error) => {
+        console.error('Anonymous E2E sign-in error:', error);
+        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');
+      })
+      .finally(() => setIsSigningIn(false));
+  }, [isAuthReady, user, isSigningIn]);
+
+"""
 
           if marker not in text:
               raise SystemExit('Could not locate Firestore marker in App.tsx')
