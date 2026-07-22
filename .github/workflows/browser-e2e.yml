@@ -1,0 +1,95 @@
+name: Browser Functional Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/e2e/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/browser-e2e.yml'
+      - 'package.json'
+      - 'package-lock.json'
+
+concurrency:
+  group: provera-browser-e2e
+  cancel-in-progress: true
+
+jobs:
+  onboarding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Enable isolated browser test mode
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/App.tsx')
+          text = path.read_text()
+
+          old_import = "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
+          new_import = "import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signInWithPopup } from 'firebase/auth';"
+          if old_import not in text:
+              raise SystemExit('Could not locate Firebase auth import')
+          text = text.replace(old_import, new_import, 1)
+
+          marker = 'function App() {'
+          if marker not in text:
+              raise SystemExit('Could not locate App function')
+          text = text.replace(marker, 'const E2E_TEST_MODE = true;\n\nfunction App() {', 1)
+
+          loading = '  const [loading, setLoading] = useState(true);'
+          if loading not in text:
+              raise SystemExit('Could not locate loading state')
+          text = text.replace(loading, '  const [loading, setLoading] = useState(!E2E_TEST_MODE);', 1)
+
+          firestore_marker = '  // Firestore Sync\n'
+          auth_block = """  useEffect(() => {\n    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;\n    setIsSigningIn(true);\n    signInAnonymously(auth)\n      .catch((error) => {\n        console.error('Anonymous browser E2E sign-in error:', error);\n        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n      })\n      .finally(() => setIsSigningIn(false));\n  }, [isAuthReady, user, isSigningIn]);\n\n"""
+          if firestore_marker not in text:
+              raise SystemExit('Could not locate Firestore marker')
+          text = text.replace(firestore_marker, auth_block + firestore_marker, 1)
+
+          auth_gate = '  if (!user) {'
+          if auth_gate not in text:
+              raise SystemExit('Could not locate auth gate')
+          text = text.replace(auth_gate, '  if (!user && !E2E_TEST_MODE) {', 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run browser functional tests
+        run: npx playwright test
+
+      - name: Upload browser test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-results
+          path: |
+            playwright-report/**
+            test-results/**
+          if-no-files-found: warn
+          retention-days: 14
