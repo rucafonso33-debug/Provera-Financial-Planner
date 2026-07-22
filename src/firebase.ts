@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
@@ -34,10 +35,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// Prefer IndexedDB in the Android WebView and fall back to localStorage.
-// Both are durable across app restarts and are configured before sign-in.
+// Durable auth persistence plus the browser resolver required by popup/redirect flows.
 export const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
 });
 
 export enum OperationType {
@@ -93,8 +94,6 @@ export function handleFirestoreError(
     path,
   };
 
-  // Never throw from snapshot listeners or UI save handlers. Throwing here
-  // previously crashed the Android WebView and left buttons stuck on Saving.
   console.error('Firestore Error:', JSON.stringify(errInfo));
   return errInfo;
 }
