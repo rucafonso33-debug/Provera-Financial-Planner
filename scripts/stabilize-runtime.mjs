@@ -164,8 +164,8 @@ const newSetupWrites = `                        const completedSettings = {
 
                         await Promise.race([
                           Promise.all([
-                            ...onboardingData.incomes.map(inc => setDoc(doc(incRef), inc)),
-                            ...onboardingData.expenses.map(exp => setDoc(doc(expRef), exp)),
+                            ...onboardingData.incomes.map((inc, index) => setDoc(doc(incRef, \`setup-income-\${index}\`), inc)),
+                            ...onboardingData.expenses.map((exp, index) => setDoc(doc(expRef, \`setup-expense-\${index}\`), exp)),
                             handleSaveSettings(completedSettings)
                           ]),
                           new Promise((_, reject) => window.setTimeout(() => reject(new Error('Setup save timed out')), 15000))
@@ -201,4 +201,4 @@ source = source.replace(
 );
 
 fs.writeFileSync(path, source);
-console.log('Runtime, verified onboarding persistence, language, currency and bounded saves applied.');
+console.log('Runtime, idempotent onboarding persistence, language, currency and bounded saves applied.');
