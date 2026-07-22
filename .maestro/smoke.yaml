@@ -4,13 +4,11 @@ appId: com.provera.app
     clearState: true
 - waitForAnimationToEnd
 - takeScreenshot: "app-after-launch"
-- extendedWaitUntil:
-    visible: "Solo Mode"
-    timeout: 90000
-- tapOn: "Solo Mode"
+- tapOn:
+    point: "50%,58%"
 - extendedWaitUntil:
     visible: "Who are we?"
-    timeout: 20000
+    timeout: 30000
 - tapOn:
     text: "e.g. Me"
 - eraseText
