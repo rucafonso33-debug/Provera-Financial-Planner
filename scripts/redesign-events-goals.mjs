@@ -3,9 +3,13 @@ import fs from 'node:fs';
 const path = new URL('../src/App.tsx', import.meta.url);
 let source = fs.readFileSync(path, 'utf8');
 
-function replaceAllExact(oldText, newText, label) {
+function replaceAllExact(oldText, newText, label, required = true) {
   if (source.includes(newText)) return;
-  if (!source.includes(oldText)) throw new Error(`Unable to apply ${label}: marker not found.`);
+  if (!source.includes(oldText)) {
+    if (required) throw new Error(`Unable to apply ${label}: marker not found.`);
+    console.warn(`Skipping optional ${label}: marker not found.`);
+    return;
+  }
   source = source.split(oldText).join(newText);
 }
 
@@ -51,18 +55,21 @@ replaceAllExact(
   `className="bg-white rounded-2xl p-4 border border-zinc-200 flex items-center justify-between shadow-sm group hover:border-amber-200 transition-all"`,
   `className="group flex items-center justify-between rounded-[24px] border border-zinc-100 bg-white p-4 shadow-sm transition-all active:scale-[0.99]"`,
   'event cards',
+  false,
 );
 
 replaceAllExact(
   `className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center"`,
   `className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"`,
   'event icon',
+  false,
 );
 
 replaceAllExact(
   `className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"`,
   `className="flex items-center gap-1 opacity-100 transition-opacity"`,
   'visible item actions',
+  false,
 );
 
 replaceAllExact(
@@ -107,18 +114,21 @@ replaceAllExact(
   `className="bg-white rounded-[32px] p-6 border border-zinc-100 shadow-sm relative overflow-hidden group"`,
   `className="group relative overflow-hidden rounded-[28px] border border-zinc-100 bg-white p-5 shadow-sm transition-all active:scale-[0.99]"`,
   'goal cards',
+  false,
 );
 
 replaceAllExact(
   `className="text-center py-20 bg-white rounded-[40px] border border-zinc-100 shadow-sm"`,
   `className="rounded-[30px] border border-dashed border-zinc-200 bg-white px-6 py-16 text-center shadow-sm"`,
   'goal empty state',
+  false,
 );
 
 replaceAllExact(
   `className="text-center py-16 bg-white rounded-3xl border border-zinc-100 shadow-sm"`,
   `className="rounded-[30px] border border-dashed border-zinc-200 bg-white px-6 py-16 text-center shadow-sm"`,
   'event empty state',
+  false,
 );
 
 fs.writeFileSync(path, source);
