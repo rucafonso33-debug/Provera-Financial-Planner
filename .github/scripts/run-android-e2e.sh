@@ -2,6 +2,22 @@
 set -Eeuo pipefail
 
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
+mkdir -p e2e-evidence
+
+collect_evidence() {
+  set +e
+  printf 'Collecting Android E2E evidence...\n'
+  adb exec-out screencap -p > e2e-evidence/screen.png
+  adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
+  adb pull /sdcard/window.xml e2e-evidence/window.xml >/dev/null 2>&1
+  adb shell dumpsys window windows > e2e-evidence/window-dumpsys.txt
+  adb shell dumpsys activity activities > e2e-evidence/activity-dumpsys.txt
+  adb shell dumpsys package com.provera.app > e2e-evidence/package-dumpsys.txt
+  adb logcat -d -v time > e2e-evidence/logcat.txt
+  adb shell pm path com.provera.app > e2e-evidence/app-path.txt
+  set -e
+}
+trap collect_evidence EXIT
 
 adb start-server
 adb wait-for-device
@@ -17,7 +33,6 @@ for attempt in $(seq 1 180); do
 
   if [ "$attempt" -eq 180 ]; then
     printf 'Android did not finish booting.\n' >&2
-    adb shell getprop || true
     exit 1
   fi
 
@@ -40,8 +55,6 @@ for attempt in $(seq 1 180); do
 
   if [ "$attempt" -eq 180 ]; then
     printf 'Android package service did not become stable.\n' >&2
-    adb shell service list || true
-    adb shell getprop || true
     exit 1
   fi
 
@@ -71,12 +84,16 @@ for attempt in 1 2 3; do
 
   if [ "$attempt" -eq 3 ]; then
     printf 'APK installation failed after three attempts.\n' >&2
-    adb devices -l || true
-    adb shell service check package || true
     exit 1
   fi
 
   sleep 20
 done
+
+adb logcat -c
+adb shell am force-stop com.provera.app || true
+adb shell monkey -p com.provera.app -c android.intent.category.LAUNCHER 1
+sleep 15
+collect_evidence
 
 maestro test .maestro/smoke.yaml --format junit --output maestro-results.xml
