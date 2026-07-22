@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prepare:app": "node scripts/harden-financial-actions.mjs && node scripts/redesign-navigation.mjs && node scripts/simplify-dashboard.mjs",
+    "prepare:app": "node scripts/harden-financial-actions.mjs && node scripts/redesign-navigation.mjs",
     "dev": "npm run prepare:app && vite",
     "build": "npm run prepare:app && vite build",
     "preview": "vite preview",
