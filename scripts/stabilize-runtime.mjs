@@ -17,8 +17,6 @@ if (!source.includes(newSettingsError)) {
   source = source.replace(oldSettingsError, newSettingsError);
 }
 
-// The browser resolver is now configured in firebase.ts, so popup auth is safe
-// and avoids mobile redirect sessions returning without a persisted user.
 source = source.replace(
   "import { GoogleAuthProvider, signInWithCredential, signInWithRedirect } from 'firebase/auth';",
   "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
@@ -28,5 +26,63 @@ source = source.replace(
   "        await signInWithPopup(auth, new GoogleAuthProvider());"
 );
 
+const oldLanguageMenu = `            <div className="relative group">
+              <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                <Globe size={20} />
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-zinc-100 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 max-h-64 overflow-y-auto">
+                {[
+                  { code: 'en', name: 'English' },
+                  { code: 'pt', name: 'Português' },
+                  { code: 'es', name: 'Español' },
+                  { code: 'fr', name: 'Français' },
+                  { code: 'de', name: 'Deutsch' },
+                  { code: 'it', name: 'Italiano' },
+                  { code: 'zh', name: '中文' },
+                  { code: 'ja', name: '日本語' },
+                  { code: 'hi', name: 'हिन्दी' }
+                ].map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleSaveSettings({ ...settings, language: lang.code as Language })}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition-colors",
+                      settings.language === lang.code ? "bg-zinc-100 text-zinc-900" : "text-zinc-500 hover:bg-zinc-50"
+                    )}
+                  >
+                    {lang.name}
+                    {settings.language === lang.code && <CheckCircle2 size={14} className="text-emerald-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>`;
+
+const newLanguageMenu = `            <label className="relative flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-zinc-500 shadow-sm">
+              <Globe size={17} />
+              <span className="sr-only">Language</span>
+              <select
+                aria-label="Language"
+                value={settings.language === 'pt' ? 'pt' : 'en'}
+                onChange={(e) => handleSaveSettings({ ...settings, language: e.target.value as Language })}
+                className="appearance-none bg-transparent pr-1 text-[11px] font-black uppercase tracking-wider text-zinc-700 outline-none"
+              >
+                <option value="en">EN</option>
+                <option value="pt">PT</option>
+              </select>
+            </label>`;
+
+if (source.includes(oldLanguageMenu)) {
+  source = source.replace(oldLanguageMenu, newLanguageMenu);
+}
+
+source = source.replaceAll(
+  'className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"',
+  'className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"'
+);
+source = source.replaceAll(
+  'className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity"',
+  'className="flex flex-col gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"'
+);
+
 fs.writeFileSync(path, source);
-console.log('Runtime loading and browser authentication recovery applied.');
+console.log('Runtime loading, authentication and mobile controls recovery applied.');
