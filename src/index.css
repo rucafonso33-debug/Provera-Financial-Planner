@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --animate-bounce-slow: bounce 3s infinite;
 }
@@ -23,23 +24,44 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  --provera-canvas: #f5f6fa;
+  --provera-surface: rgba(255, 255, 255, 0.92);
+  --provera-ink: #17171c;
+  --provera-muted: #71717a;
+  --provera-accent: #4f46e5;
+  --provera-success: #059669;
+  --provera-danger: #e11d48;
 }
 
 html {
   min-height: 100%;
-  background: rgb(250 250 250);
+  background: var(--provera-canvas);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer base {
   body {
-    @apply bg-zinc-50 text-zinc-900 font-sans;
+    @apply text-zinc-900 font-sans;
     min-height: 100dvh;
     margin: 0;
     padding-top: var(--safe-top);
     padding-right: var(--safe-right);
     padding-bottom: var(--safe-bottom);
     padding-left: var(--safe-left);
+    background:
+      radial-gradient(circle at 15% -10%, rgba(99, 102, 241, 0.12), transparent 34rem),
+      radial-gradient(circle at 95% 5%, rgba(16, 185, 129, 0.08), transparent 30rem),
+      var(--provera-canvas);
     overscroll-behavior-y: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
   }
 
   button,
@@ -49,8 +71,27 @@ html {
     -webkit-tap-highlight-color: transparent;
   }
 
+  button {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.2);
+    outline-offset: 2px;
+  }
+
   button:disabled {
     cursor: not-allowed;
+    opacity: 0.55;
   }
 }
 
@@ -77,7 +118,7 @@ html {
 }
 
 .markdown-body {
-  @apply text-xs leading-relaxed;
+  @apply text-sm leading-relaxed;
 }
 .markdown-body p {
   @apply mb-2 last:mb-0;
@@ -93,11 +134,28 @@ html {
 }
 
 .glass-card {
-  @apply bg-white/80 backdrop-blur-md border border-zinc-200 shadow-sm rounded-2xl;
+  @apply backdrop-blur-xl border border-white/80 rounded-3xl;
+  background: var(--provera-surface);
+  box-shadow: 0 18px 50px rgba(24, 24, 35, 0.07);
+}
+
+.provera-card {
+  border: 1px solid rgba(228, 228, 231, 0.82);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 34px rgba(24, 24, 35, 0.055);
+}
+
+.provera-card-interactive {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.provera-card-interactive:active {
+  transform: scale(0.985);
 }
 
 .data-table-container {
-  @apply overflow-x-auto rounded-xl border border-zinc-200 bg-white;
+  @apply overflow-x-auto rounded-2xl border border-zinc-200 bg-white;
 }
 
 .data-table {
@@ -114,4 +172,15 @@ html {
 
 .data-table tr:hover {
   @apply bg-zinc-50/50;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
