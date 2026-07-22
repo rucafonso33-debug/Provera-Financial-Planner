@@ -50,17 +50,17 @@ jobs:
           path = Path('src/App.tsx')
           text = path.read_text()
 
-          text = text.replace(
-              "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';",
-              "import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signInWithPopup } from 'firebase/auth';",
-          )
+          old_import = "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
+          new_import = "import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signInWithPopup } from 'firebase/auth';"
+          if old_import not in text:
+              raise SystemExit('Could not locate Firebase auth import in App.tsx')
+          text = text.replace(old_import, new_import, 1)
 
           marker = "  // Firestore Sync\n"
           block = """  // Test-only authentication. This code exists only in the temporary CI build.\n  useEffect(() => {\n    if (import.meta.env.VITE_E2E_TEST_MODE !== 'true' || !isAuthReady || user || isSigningIn) return;\n\n    setIsSigningIn(true);\n    signInAnonymously(auth)\n      .then(() => setLoading(false))\n      .catch((error) => {\n        console.error('Anonymous E2E sign-in error:', error);\n        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n        setLoading(false);\n      })\n      .finally(() => setIsSigningIn(false));\n  }, [isAuthReady, user, isSigningIn]);\n\n"""
 
           if marker not in text:
               raise SystemExit('Could not locate Firestore marker in App.tsx')
-
           text = text.replace(marker, block + marker, 1)
 
           old_error = "    }, (err) => handleFirestoreError(err, OperationType.GET, `users/${userId}/settings/current`));"
@@ -68,6 +68,12 @@ jobs:
           if old_error not in text:
               raise SystemExit('Could not locate Firestore settings error callback in App.tsx')
           text = text.replace(old_error, new_error, 1)
+
+          auth_gate = "  if (!user) {"
+          e2e_auth_gate = "  if (!user && import.meta.env.VITE_E2E_TEST_MODE !== 'true') {"
+          if auth_gate not in text:
+              raise SystemExit('Could not locate signed-out landing gate in App.tsx')
+          text = text.replace(auth_gate, e2e_auth_gate, 1)
 
           path.write_text(text)
           PY
