@@ -144,6 +144,43 @@ source = source.replace(
                                 setIsCurrencySelectorOpen(false);`
 );
 
+const oldSetupWrites = `                        await Promise.all([
+                          ...onboardingData.incomes.map(inc => setDoc(doc(incRef), inc)),
+                          ...onboardingData.expenses.map(exp => setDoc(doc(expRef), exp)),
+                          handleSaveSettings({ 
+                            ...settings, 
+                            onboarding_completed: true,
+                            balance_last_updated: new Date().toISOString()
+                          })
+                        ]);
+                        setRunTutorial(true);`;
+
+const newSetupWrites = `                        const completedSettings = {
+                          ...settings,
+                          language: settings.language === 'pt' ? 'pt' : 'en',
+                          onboarding_completed: true,
+                          balance_last_updated: new Date().toISOString()
+                        } as AppSettings;
+
+                        await Promise.race([
+                          Promise.all([
+                            ...onboardingData.incomes.map(inc => setDoc(doc(incRef), inc)),
+                            ...onboardingData.expenses.map(exp => setDoc(doc(expRef), exp)),
+                            handleSaveSettings(completedSettings)
+                          ]),
+                          new Promise((_, reject) => window.setTimeout(() => reject(new Error('Setup save timed out')), 15000))
+                        ]);
+
+                        const confirmed = await getDoc(doc(db, 'users', user.uid, 'settings', 'current'));
+                        if (!confirmed.exists() || confirmed.data().onboarding_completed !== true) {
+                          throw new Error('Setup was not confirmed by Firestore');
+                        }
+
+                        setSettings(completedSettings);
+                        setRunTutorial(true);`;
+
+if (source.includes(oldSetupWrites)) source = source.replace(oldSetupWrites, newSetupWrites);
+
 source = source.replaceAll(
   'className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"',
   'className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"'
@@ -164,4 +201,4 @@ source = source.replace(
 );
 
 fs.writeFileSync(path, source);
-console.log('Runtime, onboarding persistence, language, currency and bounded saves applied.');
+console.log('Runtime, verified onboarding persistence, language, currency and bounded saves applied.');
