@@ -84,5 +84,15 @@ source = source.replaceAll(
   'className="flex flex-col gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"'
 );
 
+const timeoutWrite = (writeExpression) => `await Promise.race([\n          ${writeExpression},\n          new Promise((_, reject) => window.setTimeout(() => reject(new Error('Save timed out')), 12000))\n        ]);`;
+source = source.replace(
+  'await setDoc(doc(colRef, editingItem.id), data, { merge: true });',
+  timeoutWrite('setDoc(doc(colRef, editingItem.id), data, { merge: true })')
+);
+source = source.replace(
+  'await setDoc(doc(colRef), data);',
+  timeoutWrite('setDoc(doc(colRef), data)')
+);
+
 fs.writeFileSync(path, source);
-console.log('Runtime loading, authentication and mobile controls recovery applied.');
+console.log('Runtime loading, authentication, mobile controls and bounded saves applied.');
