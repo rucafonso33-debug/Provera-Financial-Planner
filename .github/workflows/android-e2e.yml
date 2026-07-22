@@ -132,6 +132,7 @@ jobs:
           name: android-e2e-results
           path: |
             maestro-results.xml
+            e2e-evidence/**
             ~/.maestro/tests/**
           if-no-files-found: warn
           retention-days: 14
