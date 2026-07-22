@@ -47,33 +47,20 @@ jobs:
           path = Path('src/App.tsx')
           text = path.read_text()
 
-          old_import = "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
-          new_import = "import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signInWithPopup } from 'firebase/auth';"
-          if old_import not in text:
-              raise SystemExit('Could not locate Firebase auth import')
-          text = text.replace(old_import, new_import, 1)
-
           marker = 'function App() {'
           if marker not in text:
               raise SystemExit('Could not locate App function')
           text = text.replace(marker, 'const E2E_TEST_MODE = true;\n\nfunction App() {', 1)
 
-          firestore_marker = '  // Firestore Sync\n'
-          auth_block = (
-              "  useEffect(() => {\n"
-              "    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;\n"
-              "    setIsSigningIn(true);\n"
-              "    signInAnonymously(auth)\n"
-              "      .catch((error) => {\n"
-              "        console.error('Anonymous browser E2E sign-in error:', error);\n"
-              "        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n"
-              "      })\n"
-              "      .finally(() => setIsSigningIn(false));\n"
-              "  }, [isAuthReady, user, isSigningIn]);\n\n"
-          )
-          if firestore_marker not in text:
-              raise SystemExit('Could not locate Firestore marker')
-          text = text.replace(firestore_marker, auth_block + firestore_marker, 1)
+          loading = '  const [loading, setLoading] = useState(true);'
+          if loading not in text:
+              raise SystemExit('Could not locate loading state')
+          text = text.replace(loading, '  const [loading, setLoading] = useState(!E2E_TEST_MODE);', 1)
+
+          auth_gate = '  if (!user) {'
+          if auth_gate not in text:
+              raise SystemExit('Could not locate auth gate')
+          text = text.replace(auth_gate, '  if (!user && !E2E_TEST_MODE) {', 1)
 
           path.write_text(text)
           PY
