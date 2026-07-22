@@ -14,22 +14,23 @@ async function completeMinimalOnboarding(page: import('@playwright/test').Page) 
   await expect(page.getByText('Financial Health', { exact: false })).toBeVisible({ timeout: 30_000 });
 }
 
+function settingInput(page: import('@playwright/test').Page, label: string) {
+  return page.getByText(label, { exact: true }).locator('xpath=ancestor::div[contains(@class,"space-y-2")][1]').locator('input');
+}
+
 test('editing settings persists after reload', async ({ page }) => {
   await completeMinimalOnboarding(page);
 
   await page.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByText('Monthly Incomes', { exact: true })).toBeVisible();
 
-  const nameField = page.getByText('Your Name', { exact: true }).locator('..').locator('input');
-  await nameField.fill('Updated User');
-
-  const balanceField = page.getByText('Current Balance', { exact: true }).locator('..').locator('input');
-  await balanceField.fill('7250');
+  await settingInput(page, 'Your Name').fill('Updated User');
+  await settingInput(page, 'Current Balance').fill('7250');
 
   await page.waitForTimeout(3000);
   await page.reload({ waitUntil: 'networkidle' });
 
   await page.getByRole('button', { name: 'Settings' }).click();
-  await expect(page.getByText('Your Name', { exact: true }).locator('..').locator('input')).toHaveValue('Updated User');
-  await expect(page.getByText('Current Balance', { exact: true }).locator('..').locator('input')).toHaveValue('7250');
+  await expect(settingInput(page, 'Your Name')).toHaveValue('Updated User');
+  await expect(settingInput(page, 'Current Balance')).toHaveValue('7250');
 });
