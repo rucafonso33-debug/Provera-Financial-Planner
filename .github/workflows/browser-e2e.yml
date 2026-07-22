@@ -58,11 +58,6 @@ jobs:
               raise SystemExit('Could not locate App function')
           text = text.replace(marker, 'const E2E_TEST_MODE = true;\n\nfunction App() {', 1)
 
-          loading = '  const [loading, setLoading] = useState(true);'
-          if loading not in text:
-              raise SystemExit('Could not locate loading state')
-          text = text.replace(loading, '  const [loading, setLoading] = useState(!E2E_TEST_MODE);', 1)
-
           firestore_marker = '  // Firestore Sync\n'
           auth_block = (
               "  useEffect(() => {\n"
