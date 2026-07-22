@@ -200,5 +200,31 @@ source = source.replace(
   timeoutWrite('setDoc(doc(colRef), data)')
 );
 
+source = source.replace(
+  `onChange={(e) => handleSaveSettings({...settings, user_name: e.target.value})}`,
+  `onChange={(e) => setSettings(s => ({ ...s, user_name: e.target.value }))}
+                      onBlur={(e) => handleSaveSettings({ ...settings, user_name: e.currentTarget.value })}`
+);
+source = source.replace(
+  `onChange={(e) => handleSaveSettings({...settings, partner_name: e.target.value})}`,
+  `onChange={(e) => setSettings(s => ({ ...s, partner_name: e.target.value }))}
+                        onBlur={(e) => handleSaveSettings({ ...settings, partner_name: e.currentTarget.value })}`
+);
+source = source.replace(
+  `onChange={(e) => handleSaveSettings({...settings, current_balance: Number(e.target.value)})}`,
+  `onChange={(e) => setSettings(s => ({ ...s, current_balance: Number(e.target.value) }))}
+                      onBlur={(e) => handleSaveSettings({ ...settings, current_balance: Number(e.currentTarget.value) })}`
+);
+source = source.replace(
+  `onChange={(e) => handleSaveSettings({...settings, weekly_spending_estimate: Number(e.target.value)})}`,
+  `onChange={(e) => setSettings(s => ({ ...s, weekly_spending_estimate: Number(e.target.value) }))}
+                      onBlur={(e) => handleSaveSettings({ ...settings, weekly_spending_estimate: Number(e.currentTarget.value) })}`
+);
+source = source.replace(
+  `onChange={(e) => handleSaveSettings({...settings, safety_threshold: Number(e.target.value)})}`,
+  `onChange={(e) => setSettings(s => ({ ...s, safety_threshold: Number(e.target.value) }))}
+                      onBlur={(e) => handleSaveSettings({ ...settings, safety_threshold: Number(e.currentTarget.value) })}`
+);
+
 fs.writeFileSync(path, source);
-console.log('Runtime, idempotent onboarding persistence, language, currency and bounded saves applied.');
+console.log('Runtime, idempotent onboarding persistence, stable settings editing and bounded saves applied.');
