@@ -10,6 +10,7 @@ on:
       - '.maestro/**'
       - '.github/scripts/run-android-e2e.sh'
       - '.github/workflows/android-e2e.yml'
+      - 'capacitor.config.ts'
       - 'package.json'
       - 'package-lock.json'
 
@@ -42,13 +43,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Enable isolated E2E authentication
+      - name: Enable isolated E2E build
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('src/App.tsx')
-          text = path.read_text()
+          app_path = Path('src/App.tsx')
+          text = app_path.read_text()
 
           old_import = "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
           new_import = "import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signInWithPopup } from 'firebase/auth';"
@@ -84,7 +85,15 @@ jobs:
               raise SystemExit('Could not locate signed-out landing gate in App.tsx')
           text = text.replace(auth_gate, "  if (!user && !E2E_TEST_MODE) {", 1)
 
-          path.write_text(text)
+          app_path.write_text(text)
+
+          config_path = Path('capacitor.config.ts')
+          config = config_path.read_text()
+          server_block = "\n  server: {\n    hostname: 'provera-finance.vercel.app',\n    androidScheme: 'https'\n  }"
+          if server_block not in config:
+              raise SystemExit('Could not locate remote Capacitor server block')
+          config = config.replace(server_block, '', 1)
+          config_path.write_text(config)
           PY
 
       - name: Build E2E Android APK
@@ -96,7 +105,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           cp android/app/build/outputs/apk/debug/app-debug.apk provera-e2e.apk
           test -f provera-e2e.apk
-          grep -R "E2E_TEST_MODE" dist >/dev/null || true
+          grep -R "Solo Mode" android/app/src/main/assets/public >/dev/null
           ls -lh provera-e2e.apk
 
       - name: Install Maestro
