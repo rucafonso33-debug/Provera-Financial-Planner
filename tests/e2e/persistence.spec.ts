@@ -27,11 +27,22 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
 }
 
 test('onboarding completion persists after reload', async ({ page }) => {
+  const firestoreErrors: string[] = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (message.type() === 'error' || text.includes('Firestore Error')) {
+      firestoreErrors.push(text);
+    }
+  });
+  page.on('pageerror', (error) => firestoreErrors.push(error.message));
+
   await completeOnboarding(page);
 
-  await page.reload();
+  // Give the final Firestore writes time to settle before a hard reload.
+  await page.waitForTimeout(5000);
+  await page.reload({ waitUntil: 'networkidle' });
 
-  await expect(page.getByText('Financial Health', { exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Financial Health', { exact: false }), firestoreErrors.join('\n')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('Solo Mode', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Step 5: Weekly Spending', { exact: true })).toHaveCount(0);
 });
