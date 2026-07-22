@@ -13,10 +13,10 @@ function expectAll(label, snippets) {
 test('onboarding completion and Firestore persistence contracts remain wired', () => {
   expectAll('onboarding/persistence', [
     'onboarding_completed',
-    "doc(db, 'users', userId, 'settings', 'current')",
-    'onSnapshot(settingsRef',
-    "collection(db, 'users', user.uid, 'incomes')",
-    "collection(db, 'users', user.uid, 'fixedExpenses')",
+    "onSnapshot(doc(db, 'users', userId, 'settings', 'current')",
+    "collection(db, 'users', userId, 'incomes')",
+    "collection(db, 'users', userId, 'fixedExpenses')",
+    "setDoc(doc(db, 'users', userId, 'settings', 'current')",
   ]);
 });
 
@@ -31,28 +31,31 @@ test('duplicate prevention remains enforced for financial item saves', () => {
 
 test('editing and deleting remain available with confirmation and feedback', () => {
   expectAll('edit/delete', [
-    "handleEdit('income'",
-    "handleEdit('expense'",
-    "handleEdit('event'",
-    "handleEdit('goal'",
+    "const handleEdit = (type: 'income' | 'expense' | 'event' | 'goal'",
+    'setModalType(type)',
+    'setEditingItem(item)',
     "window.confirm('Delete this item? This action cannot be undone.')",
-    "setActionMessage({ type: 'success'",
+    "deleteDoc(doc(db, 'users', user.uid, collectionName, id))",
+    'setActionMessage({ type: \'success\'',
   ]);
 });
 
 test('language switching and bilingual product copy remain present', () => {
   expectAll('language', [
-    'settings.language',
+    'TRANSLATIONS',
+    'settings.language as Language',
     "settings.language === 'pt'",
-    'SUPPORTED_LANGUAGES',
+    "language: 'en'",
   ]);
 });
 
 test('AI analysis and AI chat entry points remain connected', () => {
   expectAll('AI', [
     'handleRunAIAnalysis',
+    'generateFinancialAnalysis',
+    'handleAskAI',
+    'askFinancialQuestion',
+    'chatHistory',
     'setIsAIPanelOpen(true)',
-    'aiAnalysis',
-    'chatMessages',
   ]);
 });
