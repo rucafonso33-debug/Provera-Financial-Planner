@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
+  indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
   signOut,
@@ -30,13 +31,13 @@ const firebaseConfig = {
   appId: "1:594839173707:web:7fb45d4a07b2bab32a2bce",
 };
 
-// Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// Configure persistence before any sign-in can occur, avoiding a race on reload.
+// Prefer IndexedDB in the Android WebView and fall back to localStorage.
+// Both are durable across app restarts and are configured before sign-in.
 export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
 });
 
 export enum OperationType {
@@ -71,7 +72,7 @@ export function handleFirestoreError(
   error: unknown,
   operationType: OperationType,
   path: string | null
-) {
+): FirestoreErrorInfo {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -92,11 +93,12 @@ export function handleFirestoreError(
     path,
   };
 
+  // Never throw from snapshot listeners or UI save handlers. Throwing here
+  // previously crashed the Android WebView and left buttons stuck on Saving.
   console.error('Firestore Error:', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  return errInfo;
 }
 
-// Validate connection
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
