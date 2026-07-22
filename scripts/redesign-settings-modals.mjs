@@ -24,11 +24,11 @@ replaceExact(
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
                   <p className="text-[10px] font-black uppercase tracking-wider text-indigo-200">Monthly income</p>
-                  <p className="mt-1 text-xl font-black">{formatCurrency(totalMonthlyIncome)}</p>
+                  <p className="mt-1 text-xl font-black">{formatCurrency(monthlySummary.totalIncome)}</p>
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
                   <p className="text-[10px] font-black uppercase tracking-wider text-indigo-200">Fixed costs</p>
-                  <p className="mt-1 text-xl font-black">{formatCurrency(totalMonthlyFixed)}</p>
+                  <p className="mt-1 text-xl font-black">{formatCurrency(monthlySummary.totalFixed)}</p>
                 </div>
               </div>
             </section>
