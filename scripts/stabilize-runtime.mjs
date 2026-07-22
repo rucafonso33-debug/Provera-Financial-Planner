@@ -17,16 +17,16 @@ if (!source.includes(newSettingsError)) {
   source = source.replace(oldSettingsError, newSettingsError);
 }
 
-// Mobile browsers can fail Firebase popup auth with a null internal signIn handler.
-// Redirect auth is more reliable on Chrome/Samsung Internet and returns to the app.
+// The browser resolver is now configured in firebase.ts, so popup auth is safe
+// and avoids mobile redirect sessions returning without a persisted user.
 source = source.replace(
-  "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';",
-  "import { GoogleAuthProvider, signInWithCredential, signInWithRedirect } from 'firebase/auth';"
+  "import { GoogleAuthProvider, signInWithCredential, signInWithRedirect } from 'firebase/auth';",
+  "import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';"
 );
 source = source.replace(
-  "        await signInWithPopup(auth, new GoogleAuthProvider());",
-  "        await signInWithRedirect(auth, new GoogleAuthProvider());"
+  "        await signInWithRedirect(auth, new GoogleAuthProvider());",
+  "        await signInWithPopup(auth, new GoogleAuthProvider());"
 );
 
 fs.writeFileSync(path, source);
-console.log('Runtime loading and mobile web authentication recovery applied.');
+console.log('Runtime loading and browser authentication recovery applied.');
