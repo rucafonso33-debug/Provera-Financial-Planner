@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('completes the first onboarding stages without browser errors', async ({ page }) => {
+test('completes onboarding and reaches the financial dashboard', async ({ page }) => {
   const browserErrors: string[] = [];
   page.on('pageerror', (error) => browserErrors.push(error.message));
   page.on('console', (message) => {
@@ -17,12 +17,7 @@ test('completes the first onboarding stages without browser errors', async ({ pa
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByText('Step 2: Current Balance', { exact: true })).toBeVisible();
-  const balanceInput = page.locator('input').filter({ has: page.locator('[placeholder="0.00"]') });
-  if (await balanceInput.count()) {
-    await balanceInput.first().fill('5000');
-  } else {
-    await page.getByPlaceholder('0.00').fill('5000');
-  }
+  await page.getByPlaceholder('0.00').fill('5000');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByText('Step 3: Monthly Incomes', { exact: true })).toBeVisible();
@@ -30,7 +25,23 @@ test('completes the first onboarding stages without browser errors', async ({ pa
   await page.getByPlaceholder('Amount').fill('4000');
   await page.getByPlaceholder('Day (1-31)').fill('25');
   await page.getByRole('button', { name: /Add Income/i }).click();
+  await expect(page.getByText('Salary', { exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Next Step' }).click();
 
+  await expect(page.getByText('Step 4: Fixed Expenses', { exact: true })).toBeVisible();
+  await page.getByPlaceholder('Expense Name (e.g. Rent)').fill('Rent');
+  await page.getByPlaceholder('Amount').fill('1200');
+  await page.getByPlaceholder('Day (1-31)').fill('1');
+  await page.getByRole('button', { name: /Add Expense/i }).click();
+  await expect(page.getByText('Rent', { exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Next Step' }).click();
+
+  await expect(page.getByText('Step 5: Weekly Spending', { exact: true })).toBeVisible();
+  await page.getByPlaceholder('0.00').fill('250');
+  await page.getByRole('button', { name: 'Complete Setup' }).click();
+
+  await expect(page.getByText('Financial Health', { exact: false })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('Salary', { exact: true })).toBeVisible();
+  await expect(page.getByText('Rent', { exact: true })).toBeVisible();
   expect(browserErrors, browserErrors.join('\n')).toEqual([]);
 });
