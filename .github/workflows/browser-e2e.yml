@@ -64,25 +64,22 @@ jobs:
           text = text.replace(loading, '  const [loading, setLoading] = useState(!E2E_TEST_MODE);', 1)
 
           firestore_marker = '  // Firestore Sync\n'
-          auth_block = """  useEffect(() => {
-    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;
-    setIsSigningIn(true);
-    signInAnonymously(auth)
-      .catch((error) => {
-        console.error('Anonymous browser E2E sign-in error:', error);
-        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');
-      })
-      .finally(() => setIsSigningIn(false));
-  }, [isAuthReady, user, isSigningIn]);
-
-"""
+          auth_block = (
+              "  useEffect(() => {\n"
+              "    if (!E2E_TEST_MODE || !isAuthReady || user || isSigningIn) return;\n"
+              "    setIsSigningIn(true);\n"
+              "    signInAnonymously(auth)\n"
+              "      .catch((error) => {\n"
+              "        console.error('Anonymous browser E2E sign-in error:', error);\n"
+              "        setAuthError(error instanceof Error ? error.message : 'Anonymous test sign-in failed.');\n"
+              "      })\n"
+              "      .finally(() => setIsSigningIn(false));\n"
+              "  }, [isAuthReady, user, isSigningIn]);\n\n"
+          )
           if firestore_marker not in text:
               raise SystemExit('Could not locate Firestore marker')
           text = text.replace(firestore_marker, auth_block + firestore_marker, 1)
 
-          # Keep the normal auth gate. The test must wait for the anonymous user
-          # before onboarding, otherwise setup can appear to complete without
-          # a user and nothing is persisted to Firestore.
           path.write_text(text)
           PY
 
