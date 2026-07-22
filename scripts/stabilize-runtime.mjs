@@ -26,6 +26,51 @@ source = source.replace(
   "        await signInWithPopup(auth, new GoogleAuthProvider());"
 );
 
+const oldSaveSettings = `  const handleSaveSettings = async (newSettings: AppSettings) => {
+    if (!user) return;
+    try {
+      const settingsToSave = {
+        ...newSettings,
+        balance_last_updated: newSettings.current_balance !== settings.current_balance 
+          ? new Date().toISOString() 
+          : newSettings.balance_last_updated || settings.balance_last_updated
+      };
+      await setDoc(doc(db, 'users', user.uid, 'settings', 'current'), settingsToSave);
+      setSettings(settingsToSave);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, \`users/\${user.uid}/settings/current\`);
+    }
+  };`;
+
+const newSaveSettings = `  const handleSaveSettings = async (newSettings: AppSettings) => {
+    if (!user) throw new Error('No authenticated user');
+
+    const settingsToSave = {
+      ...newSettings,
+      language: newSettings.language === 'pt' ? 'pt' : 'en',
+      balance_last_updated: newSettings.current_balance !== settings.current_balance
+        ? new Date().toISOString()
+        : newSettings.balance_last_updated || settings.balance_last_updated
+    } as AppSettings;
+
+    setSettings(settingsToSave);
+    const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
+
+    try {
+      await Promise.race([
+        setDoc(settingsRef, settingsToSave),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error('Settings save timed out')), 12000))
+      ]);
+      const saved = await getDoc(settingsRef);
+      if (!saved.exists()) throw new Error('Settings were not confirmed by Firestore');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, \`users/\${user.uid}/settings/current\`);
+      throw error;
+    }
+  };`;
+
+if (source.includes(oldSaveSettings)) source = source.replace(oldSaveSettings, newSaveSettings);
+
 const oldLanguageMenu = `            <div className="relative group">
               <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
                 <Globe size={20} />
@@ -71,9 +116,33 @@ const newLanguageMenu = `            <label className="relative flex h-10 items-
               </select>
             </label>`;
 
-if (source.includes(oldLanguageMenu)) {
-  source = source.replace(oldLanguageMenu, newLanguageMenu);
-}
+if (source.includes(oldLanguageMenu)) source = source.replace(oldLanguageMenu, newLanguageMenu);
+
+const onboardingAnchor = `<div className="max-w-md w-full space-y-8 py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="text-center space-y-2">`;
+const onboardingWithLanguage = `<div className="max-w-md w-full space-y-8 py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="flex justify-end">
+            <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white">
+              <Globe size={15} />
+              <select aria-label="Language" value={settings.language === 'pt' ? 'pt' : 'en'} onChange={(e) => setSettings(s => ({ ...s, language: e.target.value as Language }))} className="bg-transparent outline-none">
+                <option className="text-zinc-900" value="en">EN</option>
+                <option className="text-zinc-900" value="pt">PT</option>
+              </select>
+            </label>
+          </div>
+          <div className="text-center space-y-2">`;
+if (source.includes(onboardingAnchor)) source = source.replace(onboardingAnchor, onboardingWithLanguage);
+
+source = source.replace(
+  `                                handleCurrencyChange(curr.code);
+                                setIsCurrencySelectorOpen(false);`,
+  `                                setSettings(s => ({
+                                  ...s,
+                                  currency: curr.code,
+                                  remittance_currency: s.remittance_currency === curr.code ? (curr.code === 'CHF' ? 'EUR' : 'CHF') : s.remittance_currency
+                                }));
+                                setIsCurrencySelectorOpen(false);`
+);
 
 source = source.replaceAll(
   'className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"',
@@ -95,4 +164,4 @@ source = source.replace(
 );
 
 fs.writeFileSync(path, source);
-console.log('Runtime loading, authentication, mobile controls and bounded saves applied.');
+console.log('Runtime, onboarding persistence, language, currency and bounded saves applied.');
