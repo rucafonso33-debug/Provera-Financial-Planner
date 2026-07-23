@@ -37,7 +37,13 @@ interface FinancialData {
   }>;
 }
 
-const firebaseApiKey = process.env.FIREBASE_WEB_API_KEY;
+// Firebase web API keys identify the Firebase project and are not secrets. Keep
+// environment overrides first, but fall back to the same public key used by the client
+// so production token verification does not fail when Vercel lacks a duplicate env var.
+const firebaseApiKey =
+  process.env.FIREBASE_WEB_API_KEY ||
+  process.env.VITE_FIREBASE_API_KEY ||
+  'AIzaSyBvtW1M87taHK47Z1GqtxmwBXXpwvGCLfc';
 
 const readBody = (body: unknown): Record<string, unknown> => {
   if (typeof body === 'string') {
@@ -123,10 +129,6 @@ const normalizeFinancialData = (value: unknown): FinancialData | null => {
 };
 
 const verifyFirebaseToken = async (token: string) => {
-  if (!firebaseApiKey) {
-    throw new Error('FIREBASE_WEB_API_KEY is not configured.');
-  }
-
   const response = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
     {
