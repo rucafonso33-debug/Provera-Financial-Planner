@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prepare:app": "node scripts/harden-financial-actions.mjs && node scripts/redesign-navigation.mjs && node scripts/redesign-events-goals.mjs && node scripts/redesign-settings-modals.mjs && node scripts/final-product-polish.mjs && node scripts/stabilize-runtime.mjs && node scripts/improve-save-feedback.mjs",
+    "prepare:app": "node scripts/harden-financial-actions.mjs && node scripts/redesign-navigation.mjs && node scripts/redesign-events-goals.mjs && node scripts/redesign-settings-modals.mjs && node scripts/final-product-polish.mjs && node scripts/stabilize-runtime.mjs && node scripts/improve-save-feedback.mjs && node scripts/fix-locale.mjs",
     "dev": "npm run prepare:app && vite",
     "build": "npm run prepare:app && vite build",
     "preview": "vite preview",
@@ -43,7 +43,6 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
