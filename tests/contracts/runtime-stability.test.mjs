@@ -25,6 +25,12 @@ includesAll('settings edits save on blur instead of every keystroke', [
   "Settings save timed out",
 ]);
 
+includesAll('settings save feedback is visible and self-clearing', [
+  "Definições guardadas.",
+  "Could not save settings.",
+  "window.setTimeout(() => setActionMessage(null)",
+]);
+
 includesAll('item writes are bounded and duplicate-safe', [
   "itemSaveLockRef.current",
   "isSavingItem",
