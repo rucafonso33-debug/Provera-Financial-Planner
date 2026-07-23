@@ -15,7 +15,7 @@ replaceOnce(
   'automatic feedback dismissal',
 );
 
-const feedback = `.then(() => setActionMessage({ type: 'success', text: settings.language === 'pt' ? 'Definições guardadas.' : 'Settings saved.' }))\n                        .catch(() => setActionMessage({ type: 'error', text: settings.language === 'pt' ? 'Não foi possível guardar as definições.' : 'Could not save settings.' }))`;
+const feedback = `.then(() => setActionMessage({ type: 'success', text: settings.language === 'pt' ? 'Definições guardadas.' : 'Settings saved.' }))\n                        .catch(() => setActionMessage({ type: 'error', text: settings.language === 'pt' ? 'Não foi possível guardar as definições.' : 'Could not save settings.' }))}`;
 
 const fields = [
   ['user_name: e.currentTarget.value })}', `user_name: e.currentTarget.value })${feedback}`],
